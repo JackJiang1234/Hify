@@ -29,7 +29,7 @@ Hify 是一个简版的 AI Agent 开发平台（参考 Dify），可本地部署
 
 ### 技术栈
 
-- **后端**:ASP.NET Core + EF Core + MySQL 8.X + Redis 7.x。
+- **后端**: .NET 10 + ASP.NET Core 10 + EF Core 10.0 + PostgreSQL 18.x + pgvector + Redis 7.x。
 - **前端**:Vue 3 + TypeScript + Element Plus。
 - **容器化**:Docker + Docker Compose。
 
@@ -63,7 +63,8 @@ Hify.sln
 ```
 
 模块内部仍是垂直切片：`*Module.cs`（唯一 public 注册入口）+ `Endpoints/` + `Features/`（命令+处理+校验聚在一起）
-+ `Domain/`（internal）+ `Persistence/`（独立 DbContext / 独立 schema）。
+
+- `Domain/`（internal）+ `Persistence/`（独立 DbContext / 独立 schema）。
 
 ### 模块依赖方向与防循环规则（强制）
 
@@ -73,10 +74,13 @@ Hify.sln
 - **L1 领域能力**：Knowledge（→ ModelProvider 算 embedding）、Agent（纯配置存储，只存引用 ID）
 - **L2 编排层**：Conversation（→ Agent/ModelProvider/Knowledge/Mcp）、Workflow（→ Agent/ModelProvider/Mcp）
 
-依赖原则：单向依赖，不循环。共用逻辑下沉 Hify.Contracts。
+依赖原则
 
-### LLM 外部调用的容错方案（ModelProvider 模块）
+- 单向依赖，不循环。共用逻辑下沉 Hify.Contracts。
+
+### LLM 外部调用的容错方案
 
 - **每个提供商熔断器+舱壁隔离**
 - **超时**：同步调用 60s 超时，SSE 流式 120s 超时，连通性测试 10s
 - **重试**： 按异常类型区分重试：网络抖动重试、认证失败不重试、限流退避重试。
+
