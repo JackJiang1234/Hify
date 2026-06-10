@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-本文件为 Claude Code 在本仓库工作时提供项目上下文。
-
 ## 项目概述
 
 ### 产品定位
@@ -76,7 +74,7 @@ Hify.sln
 
 依赖原则
 
-- 单向依赖，不循环。共用逻辑下沉 Hify.Contracts。
+- 单向依赖，不循环。共用逻辑提取Hify.Contracts。
 
 ### LLM 外部调用的容错方案
 
