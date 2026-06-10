@@ -1,0 +1,119 @@
+Hify 项目规划讨论记录
+========================================
+
+本文件记录 Hify 在立项阶段的设计讨论与关键决策过程,供后续追溯。
+
+
+一、起点:对标 Dify 的功能梳理
+----------------------------------------
+以 Dify(https://dify.ai)为参考,核心功能模块按类别梳理为:
+
+- 应用构建:Chatbot、文本生成、Agent(Function Calling / ReAct)、Workflow/Chatflow。
+- 知识库与检索(RAG):知识库、检索增强(向量/全文/混合 + Rerank)、数据源接入。
+- 模型与编排:模型供应商管理、Prompt 编排、多模型对比/调试。
+- 工具与扩展:内置工具、自定义工具(OpenAPI)、插件机制。
+- 运营与监控(LLMOps):日志与标注、数据分析、标注回复。
+- 发布与集成:API 服务、WebApp/嵌入、多租户与团队协作。
+
+
+二、约束条件
+----------------------------------------
+- 一个人开发。
+- 本地部署。
+- 面向内部 20-50 人使用(目标 20-50 人同时在线)。
+- 主要压力在对话接口(流式 SSE)。
+
+
+三、范围裁剪决策(从 Dify 功能中取舍)
+----------------------------------------
+裁剪逻辑:砍掉所有为"规模化、多租户、商业化、对外开放"而存在的功能,
+只保留"让团队内部快速搭出可用 AI 应用"的最短链路。
+
+经过定位澄清(见第四节),最终:
+
+必做核心(P0):
+- 云端模型接入(API Key 管理 + 支持 Function Calling 的模型)
+- Agent 运行引擎(多轮 Function Calling 循环 + 工具调度)
+- 自定义 HTTP/OpenAPI 工具注册(含读/写分级 + 写操作人工确认)
+- Prompt/Agent 配置界面
+- WebApp 会话界面 + 登录(单工作空间)
+
+可延后(P1):
+- 会话日志、Hify 对外 API(若有入向集成需求)、内置工具(联网搜索/简版检索)
+
+演进(P2):
+- 知识库完整版(切分/向量化/Rerank)、Workflow(当自由推理不够、需固定流程时)
+
+砍掉:
+- 文本生成应用类型、多模型对比、运营分析看板、标注回复、
+  插件市场、多租户、网页嵌入、复杂权限体系、本地模型推理。
+
+
+四、定位澄清(三个关键回答)
+----------------------------------------
+1. 核心定位 = "干活的智能体"(而非知识问答机器人)
+   → Agent 工具调用从"可延后"升为第一优先级;
+   → RAG 从独立支柱降级为"Agent 的一个工具"。
+2. 需要对接内部系统
+   → 出向(Agent 调内部 API,靠自定义工具)= 主路径,最高优先级;
+   → 入向(内部系统调 Hify,靠对外 API)= 视需求,可延后。
+3. 不用本地部署的模型(用云端 API)
+   → 模型接入工作量大幅下降(只剩填 API Key);
+   → 但引入"内部数据出网给云厂商"的隐私风险。
+
+两个跨切面风险:
+- Agent 调内部系统会产生真实副作用 → 读/写分级 + 写操作 human-in-the-loop。
+- 云端模型 + 内部数据 = 数据出网 → 字段脱敏 + 确认哪些数据可出网 + 确认不被用于训练。
+
+
+五、技术栈对比与决策
+----------------------------------------
+对比三方案(维度:开发效率、生态成熟度、AI SDK 支持、运维复杂度):
+
+1) .NET + Vue           —— 综合 3.5;AI 生态偏弱(RAG 链路短板),但若开发者 C# 熟练则效率高。
+2) Go + React           —— 综合 2.5;运维最简但 AI 生态最弱,是"用错地方的好语言",不推荐。
+3) Python FastAPI+React —— 综合 4.5;AI 生态一等公民,可参考 Dify 本身(亦为 Python),技术上最优。
+
+技术最优 = Python;但单人项目中语言熟练度权重最高。
+
+最终决策(用户拍板):
+- 后端:.NET (ASP.NET Core) —— 开发者 C# 熟练,最稳、运维最简。
+- 前端:Vue 3 + TypeScript + Element Plus(省内部后台 UI 工作)。
+- 容器化:Docker + Docker Compose。
+- .NET 侧关键库:Microsoft.SemanticKernel(Agent/工具)、Microsoft.Extensions.AI(模型抽象)、
+  SK 的 ImportPluginFromOpenApiAsync(内部系统对接)、PostgreSQL+pgvector、SSE(IAsyncEnumerable)。
+- 唯一需自建的缺口:RAG 文档摄取(PdfPig 解析 + 自写切分),但属 P2。
+
+
+六、容量与运维估算(20-50 人,SSE 流式)
+----------------------------------------
+认知纠偏:LLM 对话平台中 QPS 是误导性指标;真实负载是并发 SSE 长连接,
+真正瓶颈在上游厂商 TPM 速率限制,而非自身服务器。
+
+- 新请求 QPS:约 0.8-1.7,可忽略。
+- 峰值并发 SSE 流:常态 5-15 条,理论上限按 50 设计。
+- 单条流以空等上游 token 为主,本地开销低;.NET/Kestrel 可轻松扛数百并发 SSE。
+- 真瓶颈:峰值约 ~228k TPM(15 流估算),易触碰中低档套餐上限,需提前申请额度 + 限流退避。
+
+缓存策略(按价值排序):
+- P0:厂商 Prompt Caching(system prompt + 工具 schema + RAG 上下文)。
+- P0:Agent/工具配置元数据用 IMemoryCache 进程内缓存。
+- P1:只读幂等工具结果短 TTL 缓存;Embedding(pgvector 本身即缓存)。
+- 不做:整段对话响应缓存(命中率低);Redis(此规模过早)。
+
+运维事项:
+- Nginx SSE:proxy_buffering off、proxy_read_timeout 调长、X-Accel-Buffering: no、SSE 心跳。
+- 取消传播:客户端断开即用 CancellationToken 取消上游调用,避免无效计费。
+- 并发限流:Semaphore 限制全局并发生成数;429 指数退避。
+- 成本可观测:按用户/Agent 记录 token 消耗并告警。
+- 安全:API Key 走 env/secrets 不入镜像;数据出网脱敏;日志不记敏感 payload。
+- 部署/持久化:单节点 Compose 无 HA;Postgres 数据卷备份;重部署会打断 SSE 流,选低峰发布;
+  各服务设 mem/cpu limit、healthcheck、restart: unless-stopped。
+
+
+七、待办 / 下一步候选
+----------------------------------------
+- 后端项目骨架(ASP.NET Core 分层 + SK 调 OpenAPI 工具最小可跑示例)——建议优先,验证主路径风险。
+- docker-compose.yml + Dockerfile(api/web/db 三件套,含 pgvector 初始化)。
+- 核心数据模型(Agent、Tool、Conversation、Message、Knowledge 等)。
+- Nginx SSE 配置 + Compose 资源限制/健康检查模板。
