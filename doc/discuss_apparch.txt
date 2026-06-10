@@ -1,0 +1,175 @@
+Hify 架构讨论记录
+================================================================
+日期：2026-06-10
+主题：代码内部组织、模块依赖关系、LLM 外部调用容错方案
+背景：ASP.NET Core 单体；一人开发；一期 50 人使用；后续可能扩到几千人。
+
+
+================================================================
+一、代码怎么组织（方案对比）
+================================================================
+
+结论：模块化单体（Modular Monolith）+ 垂直切片（Vertical Slice）。
+理由：核心矛盾是「现在一人做 MVP 要快」vs「将来可能扩到几千人要能拆」。
+模块化单体单进程一键部署（满足现在），但边界按未来微服务切线预先划好（满足将来）；
+某模块成瓶颈时可单独抽成服务，不用重写。
+
+方案对比：
+  A. 技术分层(N-Tier)：Controllers/Services/Repositories 按技术分。
+     边界无强制力，一人无 review 时半年内必腐化成大泥球，将来拆服务时逻辑已缠死。不选。
+  B. 垂直切片(单项目内)：按功能分文件夹。方向对，但同项目可随手互相 using，
+     边界靠口头约定，多人/扩规模时边界被穿透。
+  C. 模块化单体(推荐)：按功能分【项目(assembly)】，模块默认 internal，
+     模块间只经显式契约通信。编译期强制边界，模块即未来拆分单元。
+  D. Clean/Onion：Domain 居中、依赖向内。对 Hify「配置管理+流式转发+RAG」为主、
+     领域逻辑不复杂的应用属过度设计，一人维护负担重。不选。
+
+目录结构：
+  Hify.sln
+  ├── src/
+  │   ├── Hify.Host/          启动项目：DI 组装、中间件、路由聚合、Swagger
+  │   ├── Hify.Shared/        共享内核：Result<T>、分页、领域事件、EF 基类、Redis/异常封装
+  │   ├── Hify.Contracts/     各模块对外公开的接口与 DTO（模块间唯一可见的东西，用来打断循环依赖）
+  │   └── Modules/
+  │       ├── Hify.Modules.ModelProvider/   模型提供商管理（OpenAI/Claude/Gemini/Ollama 适配）
+  │       ├── Hify.Modules.Agent/           Agent 创建与配置
+  │       ├── Hify.Modules.Conversation/    对话引擎：流式、多轮、上下文
+  │       ├── Hify.Modules.Knowledge/       知识库 + RAG
+  │       ├── Hify.Modules.Workflow/        简版工作流（JSON 配置执行）
+  │       └── Hify.Modules.Mcp/             MCP 工具接入
+  └── tests/
+
+模块内部仍是垂直切片：
+  *Module.cs（唯一 public 注册入口）+ Endpoints/ + Features/（命令+处理+校验聚在一起）
+  + Domain/（internal）+ Persistence/（独立 DbContext / 独立 schema）。
+
+让边界真正成立的约束：
+  1. 模块项目默认 internal，除注册入口和放进 Contracts 的契约外全 internal，靠编译器守边界。
+  2. 模块间不直接引用彼此项目，只引用 Hify.Contracts。
+  3. 每模块独立 DbContext / 独立 schema（表前缀 agent_*、conv_*），将来拆库时边界清晰、无跨模块 JOIN。
+  4. 跨模块通信优先用进程内事件（MediatR notification 或轻量事件总线），将来换消息队列时调用方不变。
+
+扩到几千人的演进路径：
+  1. 先垂直扩展 + 无状态化（会话上下文/配置进 Redis，Host 无状态多副本 + 负载均衡），50→几百人通常够。
+  2. 再不够按模块抽服务，最先抽 Conversation（LLM 长连接占资源）和 Knowledge（RAG 重）；
+     因已是独立 assembly + 独立 schema + 契约通信，抽出去主要是进程内事件换消息队列/gRPC，业务代码基本不动。
+  3. CRUD 类模块（ModelProvider、Agent）可长期留单体，不为微服务而微服务。
+
+
+================================================================
+二、模块依赖关系与防循环
+================================================================
+
+模块角色分层（依赖只能从上往下指，绝不反向）：
+  L0 基础能力：ModelProvider（统一「调模型」能力，含 chat/embedding）、Mcp（列工具/调工具）。纯叶子。
+  L1 领域能力：Knowledge（分块/向量化/检索，→ ModelProvider 算 embedding）、
+              Agent（配置聚合，存的是引用 ID）。
+  L2 编排层：Conversation（装配 Agent 配置 → 调模型 → RAG → 调工具 → 流式吐出）、
+            Workflow（按 JSON 执行节点：调 Agent/模型/工具/条件分支）。
+
+逐条依赖（全部经 Hify.Contracts 接口，不直接引用对方项目）：
+  Knowledge    → ModelProvider   IEmbeddingService（算 embedding）
+  Conversation → ModelProvider   IChatCompletionService（调 chat、流式）
+  Conversation → Agent           IAgentConfigQuery（读配置装配对话）
+  Conversation → Knowledge       IKnowledgeRetriever（命中知识库时检索）
+  Conversation → Mcp             IToolInvoker（Agent 绑工具时调用）
+  Workflow     → Agent           IAgentConfigQuery（节点跑某 Agent）
+  Workflow     → ModelProvider/Mcp（节点直接调模型或工具）
+  Workflow     → Conversation    IAgentRunner（节点「与 Agent 对话」）
+  注：ModelProvider、Mcp 是纯叶子；环只可能出现在 L1↔L2、L2↔L2 之间。
+
+循环依赖风险：
+  风险1（高）Conversation ↔ Workflow：
+    Workflow→Conversation（节点让 Agent 聊一句）且 Conversation→Workflow（把触发工作流做成 Agent 可调工具）。
+    破环：把「可被调用的东西」统一抽象成工具/可执行单元放进 Contracts：
+      IAgentRunner（Conversation 实现）、IToolInvoker（Mcp 实现）、IToolProvider（Mcp & Workflow 都可实现）。
+      Workflow 跑 Agent 注入 IAgentRunner；Workflow 把自己注册成 IToolProvider，
+      Conversation 通过统一工具接口调它、不知背后是 Workflow。两者编译期都只指向 Contracts，无环。
+  风险2（中）Agent ↔ 其它模块：
+    陷阱是「测试这个 Agent」按钮放进 Agent 模块 → Agent→Conversation→Agent 成环。
+    破环二选一：
+      a)（推荐）Agent 退化成纯配置存储，只存引用 ID，保存时不校验，校验推迟到运行时；Agent 变 L0 叶子，DAG 最干净。
+      b) 需即时校验则经 Contracts 只读查询单向往下指，绝不指 L2。
+    铁律：「测试/试跑 Agent」永远放 Conversation 或 Host 层，绝不放进 Agent 模块。
+
+防成环三条强制规则：
+  1. 依赖只能从高层指向低层（L2→L1→L0），同层默认不互相引用；唯一例外 Workflow→Conversation 且走 IAgentRunner 契约。
+  2. 所有跨模块引用一律指向 Hify.Contracts，禁止 Hify.Modules.* 互相 ProjectReference（Host/Contracts 除外）；
+     CI 加检查：除 Host 外任何 Modules.* 不得引用另一个 Modules.*。
+  3. 双向需求一律用「契约 + 事件/统一抽象」打断，不用反向引用。
+
+守护：用 NetArchTest 写架构测试跑在 CI 里，例如
+  Types.InAssembly(typeof(AgentModule).Assembly)
+       .Should().NotHaveDependencyOn("Hify.Modules.Conversation")
+       .GetResult().IsSuccessful.Should().BeTrue();
+  一人开发时架构测试比口头约定靠谱——三个月后自己都会忘了边界。
+
+
+================================================================
+三、LLM 外部调用容错方案（ModelProvider 模块）
+================================================================
+
+核心前提：LLM 调用是长连接流式（SSE），不是普通「发请求-等响应」。
+一旦第一个 token 已吐给前端，就无法透明重试、也不能用「总超时」卡。
+设计主线：首 token 之前可容错重试，首 token 之后只能监控 + 优雅中断。
+
+1) 线程管理
+   核心认知：慢的 LLM 调用消耗的不是线程，而是「在途 HTTP 连接 + 提供商并发配额」。
+   异步 I/O 在 await 时把线程还给线程池，几十个并发流式连接并不占几十个线程（前提全程异步、不阻塞）。
+   - 全程 async/await，流式用 IAsyncEnumerable + await foreach；严禁 .Result/.Wait()/.GetAwaiter().GetResult()。
+   - IHttpClientFactory 每提供商一个 typed client，底层共享 SocketsHttpHandler，设 PooledConnectionLifetime（如 5min）刷 DNS。
+   - 流式发请求用 HttpCompletionOption.ResponseHeadersRead，拿到响应头就开始读流。
+   - 并发隔离（舱壁）：每提供商一个并发闸门（Polly ConcurrencyLimiter 或 SemaphoreSlim），上限对齐该提供商 rate limit。
+   - 背压：闸门满时有界排队（带等待超时）或快速失败返回 429。
+   - 取消传播：把 HttpContext.RequestAborted 链接进 CancellationToken，用户断开即取消上游调用、释放连接省 token。
+   规模提示：真正要拍的是「每提供商允许多少并发流」，按账号 rate limit 设；Ollama 按 GPU 显存定（通常 1-4）。
+
+2) 超时（单一总超时是错的，长回答本就要跑几分钟，拆四层）
+   - 连接握手超时：5-10s（SocketsHttpHandler.ConnectTimeout）。
+   - 首 token 超时(TTFT)：30-60s（Ollama 冷启动放到 120s+）。
+   - token 间空闲超时：30-60s。流式核心：每收到一个 chunk 重置 watchdog 计时器，间隔超时=流卡死，中断。
+   - 整体硬上限：5-10min，兜底防僵尸连接。
+   - 非流式（embedding 等）：普通总超时 30-60s，Polly Timeout 即可。
+   关键：Polly 的 per-try timeout 只覆盖到「读到响应头」（DelegatingHandler 返回 response 即结束），
+   token 间空闲超时必须自己在流读取循环里实现（watchdog + 链接 CTS），Polly 管不到。
+
+3) 容错（基础是错误分类）
+   - 瞬时可重试：429、500、502、503、504、529(Claude overloaded)、网络错误、连接/TTFT 超时 → 重试 + 计入熔断。
+   - 永久不可重试：400、401、403、404、422（请求本身错）→ 立即抛给用户，绝不重试。
+   - 业务类（内容安全拦截、上下文超长）：不重试，返回明确错误。
+   在此之上叠三层：
+   - 熔断器（每提供商+模型一个）：连续失败/超时达阈值跳闸，后续快速失败一段（如 30s）给恢复窗口。
+   - 舱壁隔离：每提供商独立并发闸门，一个挂了不影响其它。
+   - 降级/回退（可选，建议二期）：主模型熔断时回退备用模型/提供商，做成 Agent 可配置策略，非默认行为。MVP 先「明确报错 + 前端可重发」。
+
+4) 重试
+   - 指数退避 + full jitter，避免惊群。
+   - 优先用 Retry-After 头（429/503/529 都会给），而非自算退避。
+   - 只重试「瞬时可重试」类。
+   - 次数上限 2-3，叠全局重试预算防重试风暴。
+   - 幂等性风险：LLM 生成非幂等，服务端已成功只是读响应失败时重试=重复生成+双倍计费；
+     倾向只对明确没送达/没处理的错误（连接错误、429、503）重试。
+   - 流式重试硬约束：重试只能包裹「建连 + 拿到首 token」段；开始 flush token 后失败不能透明重试，
+     只能作为 SSE 错误事件抛给前端由用户决定重发。
+     架构上切两段：[可重试段]建连+发请求+等首 chunk（Polly retry/timeout/circuit 全包） →首token→
+     [不可重试段]持续消费流转发前端（只做空闲超时监控 + 优雅中断）。
+
+统一 Polly v8 管线（Microsoft.Extensions.Http.Resilience），顺序外→内：
+   ConcurrencyLimiter(每提供商，舱壁) → 整体超时(硬上限) → Retry(指数退避+jitter，尊重 Retry-After)
+   → CircuitBreaker(每提供商) → per-try 超时(连接+TTFT)。
+   注：该 handler 只保护到拿响应头；流式 body 空闲超时和首 token 后消费按 watchdog 自己实现。
+
+分提供商调参（经验起点，非精确事实，须压测校准）：
+   OpenAI : 并发起 20-30，TTFT 30s，429/500/503 重试读 Retry-After；TPM 限流为主，jitter 重要。
+   Claude : 并发起 20-30，TTFT 30s，额外处理 529 overloaded(可重试)读 Retry-After；高峰 529 较常见。
+   Gemini : 并发起 15-20，TTFT 30s，429 RESOURCE_EXHAUSTED/503 重试。
+   Ollama : 并发很小(1-4，按显存)，冷启动 TTFT 放到 120s+，无 rate limit，几乎只有连接错误和模型加载慢。
+   要点：Ollama 失败模式与三个云 API 完全不同，超时/并发参数务必按提供商可配，不能一刀切。
+
+
+================================================================
+后续可落地的脚手架（讨论中提议，尚未生成）
+================================================================
+  - 解决方案骨架：.sln + 各 csproj + 模块注册样板 + 一个示范模块的垂直切片。
+  - Hify.Contracts 契约接口：IAgentRunner / IToolInvoker / IKnowledgeRetriever / IAgentConfigQuery 等。
+  - ILlmProvider 抽象 + 带 watchdog 的流式基类 + 错误分类 + 各提供商可配参数（落到 Hify.Modules.ModelProvider）。
