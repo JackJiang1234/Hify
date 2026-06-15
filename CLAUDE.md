@@ -111,7 +111,7 @@ Hify.sln
 大表预判：
 
 - message：增长最快，必须建 (conversation_id, created_at) 索引
-- document_chunk：MySQL 只存元数据，向量存 pgvector
+- document/chunk：关系数据存 PostgreSQL，向量存 pgvector
 
 pgvector 规范：
 
@@ -152,6 +152,96 @@ POST   /api/v1/providers/{id}/test-connection  # 非 CRUD 操作用动词
 四位数字，按模块分段：
 1000-1999 通用 | 2000-2999 Provider | 3000-3999 Agent
 4000-4999 Chat | 5000-5999 MCP | 6000-6999 Workflow | 7000-7999 Knowledge
+
+## 编码规范（C#，基于微软官方约定）
+
+基线：微软 C# Coding Conventions + Framework Design Guidelines + .NET runtime 风格。
+强制方式：根目录 .editorconfig + 分析器，`Nullable=enable`、`ImplicitUsings=enable`、`TreatWarningsAsErrors=true`。
+
+### 命名
+
+- 类型/方法/属性/事件/常量/枚举成员/命名空间：PascalCase
+- 局部变量/参数：camelCase；private/protected 字段：_camelCase（含只读字段）
+- 接口加 I 前缀（IModelProvider）；泛型参数加 T 前缀（TResult）
+- 异步方法加 Async 后缀（SendMessageAsync）
+- 缩写按普通词大小写（HttpClient、userId），禁匈牙利命名、禁单字母变量（循环/lambda 短参除外）
+
+### 文件与组织
+
+- 一个文件一个顶层类型，文件名=类型名
+- 文件级命名空间（namespace Hify.Modules.Agent;），不用大括号块
+- 命名空间与目录一致，前缀 Hify.Modules.{模块}.{切片}
+- using 放文件顶部、命名空间之外，System.* 在前
+- 成员顺序：常量→字段→构造函数→属性→方法→嵌套类型；同类 public→internal→protected→private
+
+### 格式
+
+- Allman 大括号（左括号另起一行）
+- 所有控制语句必须带大括号，禁单行无括号 if
+- 4 空格缩进，禁 Tab；行宽 ≤ 120
+- 文件以单个换行结尾，连续空行最多 1 行
+
+### 类型与封装（对齐模块化单体）
+
+- 默认 internal；只有 *Module.cs 入口和 Hify.Contracts 里的接口/DTO 才 public
+- 非继承类加 sealed
+- 字段默认 private readonly，对外用属性，不暴露 public 字段
+- DTO/值对象用 record（init 访问器，不可变）；实体用 class
+- 依赖注入用主构造函数；构造函数只赋值，不放 I/O
+
+### 语言特性
+
+- 右侧类型明显时用 var，否则显式类型
+- 用目标类型 new()、集合表达式 []、模式匹配/switch 表达式
+- 字符串用内插 $"..."；引用成员名用 nameof，禁硬编码名字
+- 多返回值用元组或 record，不堆 out
+- 禁 #region、禁 goto、禁 dynamic（确需对接无类型外部数据时就地说明）
+
+### 可空性（NRT 全程开启）
+
+- 不得 #nullable disable，不滥用 ! 抑制符（确需就地注释原因）
+- 可能为空显式 T? 并处理；不可空引用类型不得返回/赋 null
+- 入参校验用 ArgumentNullException.ThrowIfNull(x)
+- 此为 C# 引用可空性，与数据库"禁 NULL"互不冲突
+
+### 异步
+
+- I/O 一律 async，返回 Task/Task<T>，加 Async 后缀
+- 禁 .Result/.Wait()/.GetAwaiter().GetResult()，禁 sync-over-async
+- 禁 async void（事件处理器除外）
+- CancellationToken 逐层透传到所有 async 方法（含 EF、HttpClient、SSE），作最后一个参数
+- 库代码 await 加 ConfigureAwait(false)；默认用 Task，热路径多同步完成才用 ValueTask
+
+### 异常与错误（对齐 Result<T>）
+
+- 可预期业务失败（校验/不存在/外部拒绝）返回 Result<T>，不抛异常
+- 异常只用于真正异常情况（编程错误/不可恢复）
+- 禁裸 catch {} 吞异常；重抛用 throw; 不用 throw ex;
+- 捕获具体异常类型，不笼统 catch (Exception)（全局处理中间件除外）
+- 抛框架内置异常类型，消息带上下文、不含敏感数据
+
+### LINQ 与集合
+
+- 避免多次枚举 IEnumerable，需多次先 ToList()
+- 判空用 Any()，不用 Count() > 0
+- 对外返回 IReadOnlyList<T>/IReadOnlyCollection<T>，不返回可变 List<T>
+
+### EF Core
+
+- 查询全 async 并传 CancellationToken
+- 只读查询加 AsNoTracking()，只取所需列用 Select 投影
+- 禁惰性加载，关联用 Include 或投影
+- 遵循数据库规范（bigint 主键、软删 deleted_at=0、游标分页、应用层维护外键）
+- 每模块独立 DbContext / 独立 schema
+
+### 注释与安全
+
+- Hify.Contracts 的 public 接口/DTO 必须有 XML 文档注释；internal 按需
+- 注释解释为什么，不复述代码；过时注释即删；TODO 带责任范围
+- 禁硬编码密钥/连接串/Token/内部主机名，走配置+Secret，示例用占位符
+- 外部输入（API 入参、LLM 输出、MCP 返回）一律不可信，落库/执行前校验
+- SQL 全参数化（EF 默认满足），禁字符串拼 SQL
+- 日志/异常消息不输出 PII、凭证、完整提示词
 
 ## 行为指令
 
