@@ -267,7 +267,7 @@ POST   /api/v1/providers/{id}/test-connection  # 非 CRUD 操作用动词
 
 ## 开发规范
 
-## 第一条：简单性原则 (Simplicity First)
+### 第一条：简单性原则 (Simplicity First)
 
 **核心：** 遵循“少即是多”哲学。绝不进行不必要的抽象，绝不引入非必需的依赖。
 
@@ -275,7 +275,7 @@ POST   /api/v1/providers/{id}/test-connection  # 非 CRUD 操作用动词
 - **1.2 (核心设计原则):** 每个类或接口保持单一职责，
 - **1.2 (方法实现原则):** 类的一个方法只做一件事，命名清晰，长度适中，建议20-50行以内
 
-## 第二条：测试先行铁律 (Test-First Imperative) - 不可协商
+### 第二条：测试先行铁律 (Test-First Imperative) - 不可协商
 
 **核心：** 所有新功能或Bug修复，都必须从编写一个（或多个）失败的测试开始。
 
@@ -283,7 +283,7 @@ POST   /api/v1/providers/{id}/test-connection  # 非 CRUD 操作用动词
 - **2.2 (表格驱动):** 单元测试必须优先采用表格驱动测试（Table-Driven Tests）的风格。
 - **2.3 (拒绝Mocks):** 优先编写集成测试，使用真实的依赖。
 
-## 第三条：明确性原则 (Clarity and Explicitness)
+### 第三条：明确性原则 (Clarity and Explicitness)
 
 **核心：** 代码的首要目的是让人类易于理解。
 
