@@ -82,3 +82,96 @@ Hify.sln
 - **超时**：同步调用 60s 超时，SSE 流式 120s 超时，连通性测试 10s
 - **重试**： 按异常类型区分重试：网络抖动重试、认证失败不重试、限流退避重试。
 
+### 数据库规范（强制，PostgreSQL 18 + pgvector）
+
+通用字段约定：
+
+- **主键**：`bigint GENERATED ALWAYS AS IDENTITY`。**禁用 uuid**（含 uuidv7）。自增 bigint 单调，索引局部性好；将来分片改 snowflake 风格 bigint，列类型不变。
+- **禁用 NULL**：所有列 `NOT NULL` + `DEFAULT`。字符串空值用 `''`，数值/引用空值用 `0`。
+- **软删除**：`deleted_at bigint NOT NULL DEFAULT 0`（0=未删，否则=删除时刻 epoch ms），不用可空 timestamptz。部分索引用 `WHERE deleted_at = 0`。
+- **金额 / Token 用量**：`bigint` 存最小精度，**禁用 DECIMAL**。
+- **枚举字段**：`varchar(32) NOT NULL DEFAULT ''`，**禁用原生 ENUM**（加值要改表）。
+
+索引与关系：
+
+- 命名 idx_{表名}_{字段名}
+- 逻辑删除字段必须加进组合索引
+- 组合索引等值列在前，范围列在后
+- 多对多关联表两个方向都要索引
+- 唯一约束用 UNIQUE INDEX，不只在代码层校验
+- 禁止在 TEXT/BLOB 字段建索引
+- 不建数据库级外键约束，应用层维护
+
+分页规则：
+
+- 默认用游标分页（WHERE id < lastId ORDER BY id DESC LIMIT N）
+- OFFSET 分页限制最大 10000 条
+- COUNT 只在第一页查，翻页不重复查
+
+大表预判：
+
+- message：增长最快，必须建 (conversation_id, created_at) 索引
+- document_chunk：MySQL 只存元数据，向量存 pgvector
+
+pgvector 规范：
+
+- 向量表建在 PostgreSQL，维度固定 1536
+- 必须建 HNSW 索引
+- 检索必须加 LIMIT，禁止全量排序
+
+## 接口规范
+
+### 路径
+
+RESTful 风格：/api/v1/{资源复数名}
+GET    /api/v1/providers          # 列表（分页）
+POST   /api/v1/providers          # 创建
+GET    /api/v1/providers/{id}     # 详情
+PUT    /api/v1/providers/{id}     # 更新
+DELETE /api/v1/providers/{id}     # 删除
+POST   /api/v1/providers/{id}/test-connection  # 非 CRUD 操作用动词
+
+### 统一响应
+
+所有接口返回 Result<T>：
+{ "code": 200, "message": "success", "data": {...} }
+
+### 分页
+
+请求：page（从 1 开始）、pageSize（默认 20，最大 100）
+响应：Result<PageResult<T>>，PageResult 包含 list、total、page、pageSize
+
+### 空值
+
+- 列表字段空时返回 []，不返回 null
+- 字符串字段空时返回 ""，不返回 null
+- 对象不存在时返回 null
+
+### 错误码
+
+四位数字，按模块分段：
+1000-1999 通用 | 2000-2999 Provider | 3000-3999 Agent
+4000-4999 Chat | 5000-5999 MCP | 6000-6999 Workflow | 7000-7999 Knowledge
+
+## 行为指令
+
+### 写代码时
+
+- 每个功能用最简单直接的方式实现
+- 不引入不必要的设计模式，除非我明确要求
+- 不做过度抽象
+- 不引入技术栈以外的依赖，需要时先问我
+- 所有外部调用必须有超时设置
+- 配置项外化到appsettings.json，不硬编码
+
+### 改代码时
+
+- 先理解相关模块的设计意图
+- 不要为了新功能破坏已有接口契约
+- 改完确保已有测试通过
+
+### 不确定时
+
+- 架构选择给我 2-3 个方案对比，我来拍板
+- 规范没覆盖的情况，先问我，不要自己编规矩
+
