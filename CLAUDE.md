@@ -138,8 +138,8 @@ POST   /api/v1/providers/{id}/test-connection  # 非 CRUD 操作用动词
 
 ### 分页
 
-请求：page（从 1 开始）、pageSize（默认 20，最大 100）
-响应：Result<PageResult<T>>，PageResult 包含 list、total、page、pageSize
+请求：page（从 1 开始）、size（默认 20，最大 100）
+响应：PageResult<T>（继承 Result<IReadOnlyList<T>>，data 即当前页列表），额外包含 total、page、size
 
 ### 空值
 

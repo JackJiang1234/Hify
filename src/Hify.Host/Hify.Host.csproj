@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hify.Shared\Hify.Shared.csproj" />
+    <ProjectReference Include="..\Hify.Contracts\Hify.Contracts.csproj" />
+    <ProjectReference Include="..\Modules\Hify.Modules.ModelProvider\Hify.Modules.ModelProvider.csproj" />
+    <ProjectReference Include="..\Modules\Hify.Modules.Agent\Hify.Modules.Agent.csproj" />
+    <ProjectReference Include="..\Modules\Hify.Modules.Conversation\Hify.Modules.Conversation.csproj" />
+    <ProjectReference Include="..\Modules\Hify.Modules.Knowledge\Hify.Modules.Knowledge.csproj" />
+    <ProjectReference Include="..\Modules\Hify.Modules.Workflow\Hify.Modules.Workflow.csproj" />
+    <ProjectReference Include="..\Modules\Hify.Modules.Mcp\Hify.Modules.Mcp.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>c2f7b00d-d921-42e8-b750-543b9938f2ff</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Hify.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.9" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,228 @@
+Hify 架构讨论记录
+================================================================
+日期：2026-06-15
+主题：生产部署架构、性能瓶颈、扩展路径、数据模型与用户表、数据库规范、C# 编码规范
+背景：ASP.NET Core 模块化单体；一人开发；一期 50 人使用；生产用 Docker + K8s；后续可能扩到几千人。
+产出：本次确定的「数据库规范」「C# 编码规范」「COUNT 决策」已写入 CLAUDE.md。
+
+
+================================================================
+一、生产部署架构（Docker + K8s）
+================================================================
+
+总判断：模块化单体 = 一个可部署单元（一个镜像、一个 Deployment），不要拆微服务。
+本阶段不是吞吐瓶颈型（3-5 QPS 很低），而是「长连接占用 + 外部依赖延迟」型。
+这个规模 K8s 偏重，但既然定了，重点配好少数关键项即可，不上 Service Mesh / 多集群 / Operator。
+
+组件清单：
+  Ingress Controller      Deployment+Service(LB)  无状态  2 副本  TLS 终止/路由/SSE 透传
+  Frontend(Vue 静态)      Deployment+Service      无状态  2 副本  Nginx 托管，/api 同源反代避免 CORS
+  Hify.Host(API)          Deployment+Service      无状态  2-4(HPA)  承载全部模块
+  PostgreSQL+pgvector     StatefulSet+PVC         有状态  1        唯一权威数据源（建议托管化）
+  Redis                   StatefulSet/Deploy+PVC  半状态  1        Cache-Aside + 会话上下文
+  外部 LLM 提供商         集群外                  -       -        出站长连接
+  MCP 工具                集群内/外               视工具   -        出站调用
+
+请求流转：
+  A. 普通同步请求：浏览器→Ingress(TLS)→Host Service→Host Pod→(Redis 命中?返回 / 未命中→PG→回填 Redis)→返回。
+  B. 对话流式(SSE，核心路径)：浏览器 EventSource→Ingress(SSE 透传,关 buffer)→Host(Conversation):
+     1.Redis 取会话上下文 2.Agent 取配置 3.RAG 时 Knowledge→ModelProvider 算 embedding→pgvector 检索拼上下文
+     4.ModelProvider→(熔断/舱壁)→外部 LLM(SSE,120s) 5.token 边到边 yield 前端 6.结束异步写 Redis+PG。
+     关键：第 4 步是长连接(最长 120s)，占用该 Host Pod，是部署上唯一要单独操心的点。
+
+K8s 关键配置（按重要度）：
+  1.（最关键）SSE 与优雅停机：terminationGracePeriodSeconds:130(>120s)；Ingress 关 proxy_buffering、
+    proxy_read_timeout≥130s。滚动更新时先停收新连接、排空在途流再退出。
+  2. HPA 别只看 CPU(LLM 是 I/O 等待，CPU 不动)，用并发连接数/活跃请求数，或固定 2-4 副本起步。
+  3. 数据库：单实例 StatefulSet+PVC+定时备份起步，不自建 PG 高可用；推荐直接用托管 PostgreSQL(需支持 pgvector)。
+  4. Secrets：API Key/DB 密码用 K8s Secret，绝不进镜像/配置文件。
+  5. 健康检查：/health/live 与 /health/ready(PG+Redis 可达)分开，ready 挂时摘流不重启。
+  6. 资源：Host Pod requests 500m/512Mi，limits 1c/1Gi 起步，实测再调。
+
+一句话取舍：本阶段真正值得花时间的是「SSE 长连接优雅停机 + PostgreSQL 托管化」，其余按无状态单体 2 副本部署即可。
+
+
+================================================================
+二、性能瓶颈分析（按严重程度排序）
+================================================================
+
+总判断：系统不是吞吐瓶颈型，而是长连接占用 + 外部依赖延迟型。传统压测意义不大。
+
+P0 外部 LLM 提供商延迟与限流（一期必处理，只防护不优化）
+  触发：多用户并发撞 TPM 配额集体 429；提供商抖动请求堆在 120s 超时；多 Agent 共享一个 Key。
+  处理：靠已定的熔断+舱壁+按异常重试(429 退避、认证失败不重试)真正生效。不做请求队列(过度设计)。
+
+P1 出站 HttpClient 连接池与舱壁配置（一期必处理，最易踩坑、成本最低）
+  触发：MaxConnectionsPerServer 用默认值→并发流式排队等连接，表象像 LLM 慢；舱壁额度太小自拒请求；
+        PooledConnectionLifetime 没设→长连接不轮换、故障转移失效。
+  处理：每提供商显式设 MaxConnectionsPerServer(如 50-100)、PooledConnectionLifetime(5min)、舱壁额度对齐在线人数。
+
+P2 pgvector 检索随知识库增长退化（一期建索引，不调优）
+  触发：单库 chunk 破万 + 没建向量索引→O(n) 全表扫；top-k 太大。
+  处理：建 HNSW(一条 DDL)+limit top-k+埋检索耗时监控。一期数据量到不了退化点。
+
+P3 Redis 会话上下文无界增长（一期必处理，简单）
+  触发：上下文无 token/轮次上限，长会话越滚越大→序列化/网络变重 + 推高每次 LLM token 数和费用。
+  处理：定上下文窗口滑动截断(按 token 或轮数)。这是对话引擎基本功能，本就该做。
+
+P4 文档入库 embedding 突发（一期异步化，不批量优化）
+  触发：上传大 TXT→分块→逐块调 embedding，突发串行外部调用卡住上传请求。
+  处理：入库走后台任务(BackgroundService+状态轮询)，别占 HTTP 请求。不做批处理/并发池。
+
+P5 PostgreSQL/EF Core 连接池（一期默认值即可）
+  触发：长事务、N+1，或副本数×每副本连接池上限撞 PG max_connections。
+  处理：基本不用动，只需保证 副本数×连接池上限 < PG max_connections。
+
+不构成瓶颈（避免误投入）：Host CPU/内存(async I/O 长连接不占线程)、Ingress/SSE 吞吐、前端(纯静态)。
+
+一期行动清单：动手 P1(HttpClient/舱壁显式配置)+P3(上下文截断)+P4(入库异步)；P0 靠熔断重试兜底；P2/P5 只埋监控+建索引。
+
+
+================================================================
+三、扩展路径：50 → 几千人（分阶段，看监控不看人数）
+================================================================
+
+主线：当前架构设计目标就是「先纵向扩副本、被逼到墙角才拆模块」。数字是指示性触发点，信号看监控。
+
+贯穿不变量（任何阶段不动）：
+  - 模块化单体代码边界(模块间只经 Hify.Contracts)；Host 无状态；单向依赖 L0→L1→L2。
+  - 拆服务时是「搬一个模块出去」，不是重写。破坏这三条说明走错。
+
+Stage 1（50→~300，纵向扩+外部依赖治理）
+  触发：并发流式连接稳定超单副本舒适区；或偶发撞 LLM 配额 429。
+  改：Host 2→4-8 副本(连接数 HPA)；PG 托管化+备份；引入 LLM Key 池(配额感知调度)；重标定熔断/舱壁/连接池。
+  不改：不拆模块、不上 MQ、不上 PG 读副本、不上 Redis 集群、不上 Mesh。
+
+Stage 2（~300→~1000，数据层与异步层加固）
+  触发：Redis 单点风险不可接受或内存/连接吃紧；对话历史查询变慢、读多写少；入库任务量需专门吞吐保障。
+  改：Redis 上 HA(Sentinel/Cluster)；PG 读写分离(读副本承接历史/配置读)；后台任务抽成独立 Worker Deployment+
+      引入真正队列(Redis Stream 起步)；pgvector 正式建 HNSW+监控+评估独立实例。
+  不改：主业务仍单体；不拆 LLM 网关；不做分库分表。
+
+Stage 3（~1000→几千，拆出受压最重的模块）
+  触发：流式长连接总量让单体「连接管理」成扩缩瓶颈(加副本只为扛连接非算力)；LLM 调用治理逻辑需独立迭代。
+  改（按支点顺序）：
+    1.先抽 ModelProvider→独立 LLM Gateway(L0 叶子、依赖最干净、受压最重；收口所有出站连接/Key 池/熔断/限流/路由)。
+    2.再抽 Conversation→独立对话引擎(承载所有 SSE 长连接的 L2 层，独立后用专门连接处理层按连接数扩缩)。
+    3.PG 大表按时间分区；向量若撑爆 pgvector 评估迁专用向量库。
+  不改：不拆 Agent/Workflow/Mcp(负载低、配置/编排型)；不上多活多区域；Contracts 边界不变(所以拆分是搬运非重写)。
+
+最容易犯的错：在 Stage 1 就上微服务/Kafka/Mesh。这套架构的价值就是让你推迟拆分到 Stage 3。
+技术风险最高的一跳：Stage 3 抽 LLM Gateway 的服务边界 + Contracts 接口拆分。
+
+
+================================================================
+四、核心数据表与关系
+================================================================
+
+关键前提：模块各自独立 schema，跨模块无数据库外键(Agent 只存引用 ID)。
+两种关系：模块内真 FK(实线) vs 跨模块逻辑引用 ID(虚线，靠 Contracts 维系)。
+
+ModelProvider(L0)：model_provider 1—N model(区分 chat/embedding 类型)
+Mcp(L0)：         mcp_server 1—N mcp_tool
+Knowledge(L1)：   knowledge_base 1—N document 1—N chunk；chunk⤍model(embedding，逻辑引用)
+Agent(L1，纯配置)：agent；agent 1—N agent_tool；agent 1—N agent_knowledge；
+                   跨模块：agent⤍model；agent_tool⤍mcp_tool；agent_knowledge⤍knowledge_base
+Conversation(L2)：conversation 1—N message 1—N message_tool_call；
+                   跨模块：conversation⤍agent；message_tool_call⤍mcp_tool
+Workflow(L2)：    workflow 1—N workflow_run 1—N workflow_node_run；
+                   跨模块：workflow 的 JSON 内引用 agent/model/mcp_tool(内嵌配置，不单独建关联表)
+
+两个注意点：
+  1. agent 是引用中枢(聚合 model/mcp_tool/knowledge_base 三个逻辑引用)，删被引用对象不级联，需应用层校验悬空引用。
+  2. model 被两类消费者引用(Agent 用 chat、Knowledge 用 embedding)，用类型字段区分，防 Agent 误绑 embedding 模型。
+
+
+================================================================
+五、用户表（轻量身份，方案 2）
+================================================================
+
+问题：产品范围明确「不做多租户/权限体系」，原数据模型里没有 user 表，数据无归属、全局共享。
+决策：选方案 2 = 轻量身份(区分「谁的会话/Agent」做个人视图，但不做角色和鉴权)，不违背「不做权限体系」。
+
+落地：
+  - user 表放新建的极简 Identity schema(一张表)，保持「每模块独立 schema」一致；其余模块只存 owner_id 逻辑引用。
+  - 加 owner_id⤍user 的表：agent、knowledge_base、conversation、workflow。
+  - 不加 owner_id：model_provider/model/mcp_server/mcp_tool(基础设施配置，团队共享、管理员维护，挂归属会渗入隐性权限)；
+                   document/chunk(随 knowledge_base 走)；message/*_run(随父表走)。
+
+三条必守规则：
+  1. 逻辑引用无级联：owner_id 不是外键，删 user 不级联；建议软删用户+数据保留，owner_id 留作历史归属。
+  2. 不引入角色/鉴权字段：user 表只放身份标识，不加 role/permission/is_admin(一加就滑向权限体系)。
+  3. 归属≠可见性：owner_id 只做「我的 xx」过滤视图，不做访问控制——这是「轻量身份」与「权限体系」的分界线。
+
+
+================================================================
+六、数据库性能规范（已写入 CLAUDE.md）
+================================================================
+
+注：本节是讨论结论。用户随后用自己的团队规范覆盖了部分初始建议(见下「团队规范覆盖」)，
+以 CLAUDE.md「数据库规范」节为最终准。
+
+团队规范覆盖（用户拍板，覆盖初始最佳实践建议）：
+  - 主键：bigint GENERATED ALWAYS AS IDENTITY，禁用 uuid(含 uuidv7)。
+    (初始建议过 uuidv7；改 bigint 后单调性/索引局部性同样满足，8 字节更小，将来分片改 snowflake-bigint 列类型不变。)
+  - 禁用 NULL：所有列 NOT NULL+DEFAULT；字符串空值用 ''，数值/引用空值用 0。
+  - 金额/Token 用量：bigint 存最小精度，禁用 DECIMAL(费用用 cost_micro_usd 百万分之一美元)。
+  - 枚举字段：varchar(32)，禁用原生 ENUM(加值要改表)，取值在应用层常量校验。
+
+三处因覆盖需重新处理（落 init.sql 最易写错）：
+  1. 软删除：deleted_at 从「timestamptz NULL」改「bigint NOT NULL DEFAULT 0」(0=未删,否则=删除 epoch ms)，
+     部分索引改 WHERE deleted_at = 0。
+  2. 分页 keyset 简化：bigint 单调，游标只需单列 id(WHERE id < $last ORDER BY id DESC)，tiebreaker 问题消失。
+  3. 向量列 NOT NULL 与异步入库冲突：零向量占位会污染 HNSW；故 chunk 行等 embedding 算完才插入，
+     分块进度记 document.embed_status(''/processing/done/failed)。
+
+其余规范：
+  - 索引：跨模块引用列只建索引不建外键；列表查询建(过滤列,id DESC)+WHERE deleted_at=0 部分索引；命名 idx_{表}_{字段}；
+    组合索引等值列在前范围列在后；唯一约束用 UNIQUE INDEX；禁在 TEXT/BLOB 建索引。
+  - 大表：message、workflow_node_run 建表即按 created_at 月分区，分区键进主键(PRIMARY KEY(id,created_at))，清理用 DROP 分区。
+  - pgvector：HNSW+vector_cosine_ops+维度固定 1536，检索必带 LIMIT。
+  - 分页：默认游标分页，OFFSET 限制最大 10000，列表页不 SELECT * 带大字段。
+  - COUNT 决策(已写入 CLAUDE.md)：列表仅第一页返回 total，翻页不重复查 COUNT；下一页有无用「多取一行」判断，不依赖总页数。
+
+提醒：「禁 NULL」针对存储，不针对查询结果(LEFT JOIN/聚合空集仍产 NULL，应用层仍要处理)；
+      C# 引用可空性与数据库禁 NULL 是两回事，互不冲突。
+
+
+================================================================
+七、C# 编码规范（已写入 CLAUDE.md）
+================================================================
+
+基线：微软 C# Coding Conventions + Framework Design Guidelines + .NET runtime 风格。
+强制方式：根目录 .editorconfig+分析器，Nullable=enable、ImplicitUsings=enable、TreatWarningsAsErrors=true。
+覆盖 12 维度(详见 CLAUDE.md「编码规范(C#)」节)：
+
+  命名     PascalCase 类型/方法/属性；camelCase 局部/参数；_camelCase 私有字段；I 前缀接口；Async 后缀；禁匈牙利。
+  组织     一文件一类型(文件名=类型名)；文件级命名空间；using 在命名空间外 System.* 在前；成员固定顺序。
+  格式     Allman 大括号；控制语句必带括号；4 空格禁 Tab；行宽≤120。
+  封装     默认 internal(只 *Module.cs 入口和 Contracts 才 public)；非继承类 sealed；字段 private readonly；
+           DTO 用 record(init,不可变)；DI 用主构造函数。
+  语言特性 类型明显用 var；目标类型 new()/集合表达式[]/模式匹配；内插字符串;nameof；禁 #region/goto/dynamic。
+  可空性   NRT 全程开启，不得 #nullable disable，不滥用 !；入参用 ArgumentNullException.ThrowIfNull。
+  异步     I/O 全 async+Async 后缀；禁 .Result/.Wait()/sync-over-async；禁 async void；CancellationToken 逐层透传作末参；
+           库代码 ConfigureAwait(false)；默认 Task，热路径才 ValueTask。
+  异常     可预期失败返回 Result<T> 不抛异常；异常只用于真异常；禁裸 catch{}吞；重抛 throw; 不用 throw ex;；捕获具体类型。
+  LINQ集合 避免多次枚举(需多次先 ToList)；判空用 Any() 不用 Count()>0；对外返回 IReadOnlyList<T>。
+  EF Core  查询全 async+CancellationToken；只读 AsNoTracking()+Select 投影；禁惰性加载；每模块独立 DbContext/schema。
+  注释     Contracts 的 public 接口/DTO 必须 XML 文档；注释解释为什么；TODO 带责任范围。
+  安全     禁硬编码密钥/连接串/Token/内部主机名(走配置+Secret)；外部输入(含 LLM 输出/MCP 返回)一律不可信先校验；
+           SQL 全参数化禁拼接；日志/异常不输出 PII/凭证/完整提示词。
+
+
+================================================================
+八、本次同步修改
+================================================================
+  - CLAUDE.md 新增「数据库规范(强制)」节(后经用户手编精简)。
+  - CLAUDE.md 新增「编码规范(C#)」节。
+  - CLAUDE.md「COUNT 决策」固化。
+  - 修正 CLAUDE.md 数据库规范中 MySQL 笔误：document/chunk 关系数据存 PostgreSQL，向量存 pgvector(全栈无 MySQL)。
+
+
+================================================================
+后续可落地（讨论中提议，尚未生成）
+================================================================
+  - 按最终规范产出可直接执行的 init.sql(含 user 表、月分区、HNSW 向量列、各索引)。
+  - P1 HttpClient + 熔断/舱壁按四个提供商的具体 .NET 配置代码。
+  - 各模块 EF Core 实体骨架(含 schema 划分与「逻辑引用 ID 而非导航属性」写法)。
+  - 根目录 .editorconfig + 分析器配置以强制编码规范。
