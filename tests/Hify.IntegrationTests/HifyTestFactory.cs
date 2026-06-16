@@ -1,3 +1,5 @@
+using FluentValidation;
+
 using Hify.IntegrationTests.Probes;
 
 using Microsoft.AspNetCore.Hosting;
@@ -27,6 +29,10 @@ public sealed class HifyTestFactory : WebApplicationFactory<Program>
             }));
 
         builder.ConfigureTestServices(services =>
-            services.AddControllers().AddApplicationPart(typeof(JsonProbeController).Assembly));
+        {
+            services.AddControllers().AddApplicationPart(typeof(JsonProbeController).Assembly);
+            // 注册探针程序集内的校验器（生产环境只扫描各业务模块程序集，不含测试程序集）。
+            services.AddValidatorsFromAssemblyContaining<ValidationProbeController>(includeInternalTypes: true);
+        });
     }
 }

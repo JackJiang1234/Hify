@@ -1,5 +1,6 @@
 using Hify.Host.Infrastructure;
 using Hify.Host.Json;
+using Hify.Host.Validation;
 
 using Hify.Modules.Agent;
 using Hify.Modules.Conversation;
@@ -21,17 +22,22 @@ internal static class ModuleHostExtensions
     public static IServiceCollection AddHifyModules(this IServiceCollection services, IConfiguration configuration)
     {
         var mvc = services
-            .AddControllers()
+            .AddControllers(options => options.Filters.Add<ValidationActionFilter>())
             .AddNewtonsoftJson(options => HifyJsonSettings.Apply(options.SerializerSettings));
 
         // 允许发现 internal 控制器。
         mvc.ConfigureApplicationPartManager(manager =>
             manager.FeatureProviders.Add(new InternalControllerFeatureProvider()));
 
+        // 模型绑定/校验失败统一为 Result（业务码 1001），替换默认 ProblemDetails 400。
+        services.AddHifyModelStateHandling();
+
         foreach (var module in CreateModules())
         {
             // 将模块程序集纳入控制器发现范围（模块化单体：控制器分散在各模块）。
             mvc.AddApplicationPart(module.GetType().Assembly);
+            // 注册模块内的 FluentValidation 校验器（由全局过滤器统一执行）。
+            services.AddHifyValidators(module.GetType().Assembly);
             module.RegisterServices(services, configuration);
         }
 

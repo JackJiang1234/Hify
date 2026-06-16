@@ -56,3 +56,6 @@ nunit-*.xml
 # Visual Studio
 .vs/
 
+
+# Serilog file sink output
+logs/
