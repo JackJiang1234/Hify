@@ -36,7 +36,7 @@ exit /b %ERRORLEVEL%
 set "ASPNETCORE_ENVIRONMENT=Development"
 set "ASPNETCORE_URLS=http://localhost:%PORT%"
 echo Starting Hify.Host (Development) -^> http://localhost:%PORT%
-echo Health check -^> http://localhost:%PORT%/health
+echo Health check -^> http://localhost:%PORT%/api/v1/health
 echo If startup fails due to a missing DB password, run:
 echo   dotnet user-secrets set "Database:Password" "<local-password>" --project src/Hify.Host
 dotnet run --project "%HOST_PROJECT%" --no-launch-profile

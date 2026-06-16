@@ -6,7 +6,7 @@
 ## 技术栈
 
 - 后端：.NET 10 + ASP.NET Core 10 + EF Core 10 + PostgreSQL 18（pgvector）+ Redis 7
-- 前端：Vue 3 + TypeScript + Element Plus
+- 前端：Vue 3 + TypeScript + Vite + Element Plus + Pinia + vue-router（包管理器 pnpm）
 - 容器化：Docker + Docker Compose
 
 ## 环境要求
@@ -14,6 +14,7 @@
 - .NET SDK 10.0+
 - PostgreSQL 18（启用 pgvector 扩展）
 - Redis 7+
+- Node.js 20.19+（前端，推荐 20.19+ / 22.12+）+ pnpm 9+
 
 ## 配置说明
 
@@ -88,7 +89,7 @@ dotnet test  Hify.sln
 
 ### 本地开发脚本
 
-封装常用命令，默认以 Development 运行 Host（http://localhost:5080，健康检查 `/health`）。
+封装常用命令，默认以 Development 运行 Host（http://localhost:5080，健康检查 `/api/v1/health`）。
 
 PowerShell / pwsh：
 
@@ -106,4 +107,29 @@ scripts\dev.cmd            :: 运行 Host
 scripts\dev.cmd test       :: 运行全部测试
 scripts\dev.cmd build      :: 构建解决方案
 scripts\dev.cmd run 5090
+```
+
+### 前端开发脚本
+
+前端为独立 npm 项目（位于 `web/`，不挂进 .NET solution）。脚本自动定位 `web/` 并在缺依赖时先 `pnpm install`，默认在 http://localhost:5173 启动 Vite dev server。dev server 会把 `/api`（含 `/api/v1/health`）反代到后端（见 `web/vite.config.ts`），需另行用 `scripts/dev.ps1` 启动后端。
+
+PowerShell / pwsh：
+
+```powershell
+./scripts/web.ps1            # 启动 dev server（http://localhost:5173）
+./scripts/web.ps1 build      # 类型检查 + 生产构建到 web/dist
+./scripts/web.ps1 preview    # 预览生产构建
+./scripts/web.ps1 install    # 安装依赖
+./scripts/web.ps1 lint       # ESLint 自动修复
+./scripts/web.ps1 dev -Port 5180
+```
+
+Windows cmd：
+
+```bat
+scripts\web.cmd            :: 启动 dev server
+scripts\web.cmd build      :: 类型检查 + 生产构建
+scripts\web.cmd preview    :: 预览生产构建
+scripts\web.cmd install    :: 安装依赖
+scripts\web.cmd dev 5180
 ```

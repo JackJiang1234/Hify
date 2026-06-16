@@ -50,7 +50,7 @@ switch ($Task) {
         $env:ASPNETCORE_URLS = "http://localhost:$Port"
 
         Write-Host "Starting Hify.Host (Development) -> http://localhost:$Port" -ForegroundColor Cyan
-        Write-Host "Health check                    -> http://localhost:$Port/health" -ForegroundColor Cyan
+        Write-Host "Health check                    -> http://localhost:$Port/api/v1/health" -ForegroundColor Cyan
         Write-Host "If startup fails due to a missing DB password, run:" -ForegroundColor DarkGray
         Write-Host "  dotnet user-secrets set `"Database:Password`" `"<local-password>`" --project src/Hify.Host" -ForegroundColor DarkGray
 

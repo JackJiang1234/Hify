@@ -6,7 +6,7 @@
 .DESCRIPTION
     Wraps common frontend commands so you don't retype the web/ path and pnpm
     invocations. Auto-runs 'pnpm install' when node_modules is missing.
-    The 'dev' task proxies /api and /health to the backend (see vite.config.ts);
+    The 'dev' task proxies /api (incl. /api/v1/health) to the backend (see vite.config.ts);
     start the backend separately with scripts/dev.ps1.
 
 .PARAMETER Task
@@ -66,7 +66,7 @@ try {
         }
         'dev' {
             Write-Host "Starting Vite dev server -> http://localhost:$Port" -ForegroundColor Cyan
-            Write-Host "Proxies /api and /health  -> backend (start it via scripts/dev.ps1)" -ForegroundColor DarkGray
+            Write-Host "Proxies /api -> backend (start it via scripts/dev.ps1)" -ForegroundColor DarkGray
             pnpm dev --port $Port
         }
     }

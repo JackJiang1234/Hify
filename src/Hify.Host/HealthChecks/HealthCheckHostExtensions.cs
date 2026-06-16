@@ -4,7 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 namespace Hify.Host.HealthChecks;
 
 /// <summary>
-/// 健康检查装配：注册检查项与映射 <c>/health</c> 端点。
+/// 健康检查装配：注册检查项与映射 <c>/api/v1/health</c> 端点。
 /// </summary>
 internal static class HealthCheckHostExtensions
 {
@@ -19,7 +19,7 @@ internal static class HealthCheckHostExtensions
 
     public static IEndpointRouteBuilder MapHifyHealthChecks(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks("/health", new HealthCheckOptions
+        endpoints.MapHealthChecks("/api/v1/health", new HealthCheckOptions
         {
             ResponseWriter = HealthCheckResponseWriter.WriteAsync,
         });

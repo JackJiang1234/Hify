@@ -14,7 +14,7 @@ public class HealthCheckTests : IClassFixture<HifyTestFactory>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/api/v1/health");
         var json = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

@@ -23,12 +23,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // 开发期反代后端，避免跨域；生产由 Nginx 承担
+      // 健康检查 /api/v1/health 也在此前缀下，无需单独规则
       '/api': {
-        target: 'http://localhost:5155',
-        changeOrigin: true,
-      },
-      // 健康检查端点（联通测试用）
-      '/health': {
         target: 'http://localhost:5155',
         changeOrigin: true,
       },

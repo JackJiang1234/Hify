@@ -59,7 +59,7 @@ goto :done
 
 :dev
 echo Starting Vite dev server -^> http://localhost:%PORT%
-echo Proxies /api and /health  -^> backend (start it via scripts\dev.cmd)
+echo Proxies /api -^> backend (start it via scripts\dev.cmd)
 call pnpm dev --port %PORT%
 goto :done
 
