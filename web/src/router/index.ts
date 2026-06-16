@@ -1,22 +1,25 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
-import ConsoleLayout from '@/components/layout/ConsoleLayout.vue'
-
-// 各 feature 的路由集中在此聚合；feature 增多后可拆为 routes/*.ts 再合并
+// 布局由 App.vue 承担（左侧菜单 + 右侧 router-view），路由为扁平结构
 const routes: RouteRecordRaw[] = [
+  { path: '/', redirect: '/providers' },
   {
-    path: '/',
-    component: ConsoleLayout,
-    redirect: '/providers',
-    children: [
-      {
-        path: 'providers',
-        name: 'providers',
-        component: () => import('@/features/provider/views/ProviderListView.vue'),
-        meta: { title: '模型管理' },
-      },
-      // agent / conversation / knowledge / workflow / mcp 路由后续在此追加
-    ],
+    path: '/providers',
+    name: 'providers',
+    component: () => import('@/features/provider/views/ProviderListView.vue'),
+    meta: { title: '模型管理' },
+  },
+  {
+    path: '/agents',
+    name: 'agents',
+    component: () => import('@/features/agent/views/AgentListView.vue'),
+    meta: { title: 'Agent 管理' },
+  },
+  {
+    path: '/conversations',
+    name: 'conversations',
+    component: () => import('@/features/conversation/views/ConversationView.vue'),
+    meta: { title: '对话' },
   },
 ]
 
