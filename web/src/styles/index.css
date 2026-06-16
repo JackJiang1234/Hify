@@ -1,6 +1,8 @@
-:root {
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-}
+/* 设计令牌 → Element Plus 映射 → 基础样式。
+ * 注意顺序：tokens 必须最先；element-overrides 须在 element-plus 主题之后生效，
+ * 这里通过 @import 顺序保证（element-plus 样式由组件按需自动引入，优先级低于本文件）。 */
+@import './tokens.css';
+@import './element-overrides.css';
 
 * {
   box-sizing: border-box;
@@ -11,4 +13,41 @@ body,
 #app {
   margin: 0;
   height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--color-text-link);
+  text-decoration: none;
+  transition: var(--transition-colors);
+}
+
+a:hover {
+  color: var(--color-text-link-hover);
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* 可达性：尊重系统「减少动态效果」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
