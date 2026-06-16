@@ -27,6 +27,11 @@ export default defineConfig({
         target: 'http://localhost:5155',
         changeOrigin: true,
       },
+      // 健康检查端点（联通测试用）
+      '/health': {
+        target: 'http://localhost:5155',
+        changeOrigin: true,
+      },
     },
   },
 })
