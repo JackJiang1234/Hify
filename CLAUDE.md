@@ -28,7 +28,7 @@ Hify 是一个简版的 AI Agent 开发平台（参考 Dify），可本地部署
 ### 技术栈
 
 - **后端**: .NET 10 + ASP.NET Core 10 + EF Core 10.0 + PostgreSQL 18.x + pgvector + Redis 7.x。
-- **前端**:Vue 3 + TypeScript + Element Plus。
+- **前端**:Vue 3 + TypeScript + Vite + Element Plus + Pinia + vue-router；前后端分离，独立构建部署。包管理器 pnpm。
 - **容器化**:Docker + Docker Compose。
 
 ### 部署与运维预期
@@ -75,6 +75,43 @@ Hify.sln
 依赖原则
 
 - 单向依赖，不循环。共用逻辑提取Hify.Contracts。
+
+### 前端代码组织：特性切片（
+
+前端独立项目，放在与 `src/`、`tests/` 平级的 `web/` 目录（独立 npm 项目，不挂进 .NET solution）。
+
+目录结构：
+
+```
+web/
+├── package.json / vite.config.ts / tsconfig*.json   # pnpm + Vite + 严格 TS
+├── .env / .env.development / .env.production         # VITE_API_BASE_URL 等
+├── eslint.config.ts / .prettierrc.json              # 前端编码基线（对应后端 .editorconfig）
+├── Dockerfile / nginx.conf                          # Nginx 托管静态产物 + 反代 /api
+└── src/
+    ├── main.ts / App.vue
+    ├── api/            # HTTP 层：client.ts(拦截器拆 Result<T>) + types.ts + 按模块分文件
+    ├── features/       # 业务特性切片，与后端 6 模块一一对应
+    │   └── {feature}/  #   views/(路由页) + components/ + composables/ + store.ts + types.ts
+    ├── components/      # 跨特性通用组件（layout/ 控制台外壳等）
+    ├── composables/     # 全局通用 hook（useSse 流式、useTable 分页等）
+    ├── stores/          # 全局 Pinia store
+    ├── router/          # 路由聚合（各 feature 路由在此挂载）
+    ├── constants/       # 错误码等常量（与后端分段对齐）
+    ├── utils/ / styles/ / assets/
+```
+
+`features/` 下的特性与后端模块对应：provider、agent、conversation、knowledge、workflow、mcp。
+
+### 前端约定（强制）
+
+- **与后端契约对齐**：`api/client.ts` 拦截器统一拆 `Result<T>` / `PageResult<T>`——`code===200` 取 `data`，否则抛 `ApiError` 并提示；分页 `page` 从 1、`size` 默认 20 上限 100。
+- **错误码**：`constants/error-code.ts` 与后端四位分段一一对应（1xxx 通用 … 7xxx Knowledge），优先展示后端 `message`，本地仅作兜底。
+- **空值渲染**：列表当 `[]`、字符串当 `""`、对象可能 `null`，TS 类型据此标注。
+- **SSE 流式**：用原生 `fetch` + `ReadableStream`（不走 axios），120s 超时对齐后端；Nginx 反代须关 buffering。
+- **超时**：所有外部调用必须设超时——axios 同步调用 60s，SSE 120s。
+- **命名**：组件文件 PascalCase（`ProviderListView.vue`）、composable 以 `use` 开头（`useProviderList`）、其余 TS 文件 kebab-case；不引入技术栈以外依赖，需要时先问。
+- **Element Plus 按需自动导入**（unplugin-auto-import + unplugin-vue-components），组件无需手动 import。
 
 ### LLM 外部调用的容错方案
 
