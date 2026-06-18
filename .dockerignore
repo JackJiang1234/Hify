@@ -1,0 +1,10 @@
+# 减小后端镜像构建上下文（前端、产物、IDE、VCS 不参与后端构建）
+**/bin
+**/obj
+web/node_modules
+web/dist
+.git
+.vs
+.idea
+**/*.user
+logs

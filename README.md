@@ -9,6 +9,25 @@
 - 前端：Vue 3 + TypeScript + Vite + Element Plus + Pinia + vue-router（包管理器 pnpm）
 - 容器化：Docker + Docker Compose
 
+## 快速启动（Docker Compose）
+
+一条命令拉起 PostgreSQL（含 pgvector，首次自动执行根目录 `ddl.sql` 建库表）、Redis 与后端 API：
+
+```bash
+docker compose up -d --build
+```
+
+- API：http://localhost:8080 （健康检查 `GET /api/v1/health`，OpenAPI 文档 `/openapi/v1.json`）
+- 端口被占用时可覆盖：`DB_PORT`（默认 5432）、`REDIS_PORT`（默认 6379）、`API_PORT`（默认 8080）。
+  例：`DB_PORT=5433 docker compose up -d --build`
+- 仅起依赖（本地 `dotnet run` 连它）：`docker compose up -d db redis`
+- 改了 `ddl.sql` 需重置数据卷再初始化：`docker compose down -v && docker compose up -d`
+
+> **生产务必覆盖内置开发默认值**（密码与加密密钥）：
+> ```bash
+> POSTGRES_PASSWORD=<强密码> MODELPROVIDER_KEY=$(openssl rand -base64 32) docker compose up -d --build
+> ```
+
 ## 环境要求
 
 - .NET SDK 10.0+
@@ -43,6 +62,21 @@
 | `Redis:Password` | 密码（无认证可留空） | （空） | **是** |
 | `Redis:Database` | 逻辑库索引 | `0` | 否 |
 | `Redis:ConnectTimeoutMs` | 连接超时（毫秒） | `5000` | 否 |
+
+### ModelProvider 配置
+
+| 配置键 | 说明 | 默认值 | 是否敏感 |
+| --- | --- | --- | --- |
+| `ModelProvider:CredentialProtection:Key` | 供应商密钥加密用 AES 密钥（base64，16/24/32 字节）。**须跨重启稳定**，否则既有密文无法解密。 | （无，须注入） | **是** |
+| `ModelProvider:HealthProbe:Enabled` | 是否启用周期健康探活 | `true` | 否 |
+| `ModelProvider:HealthProbe:IntervalSeconds` | 探活间隔（秒） | `60` | 否 |
+| `ModelProvider:HealthProbe:InitialDelaySeconds` | 启动后首次探活延迟（秒） | `30` | 否 |
+
+加密密钥本地设置（生产用环境变量 `ModelProvider__CredentialProtection__Key`）：
+
+```bash
+dotnet user-secrets set "ModelProvider:CredentialProtection:Key" "$(openssl rand -base64 32)" --project src/Hify.Host
+```
 
 ### 本地开发：设置私密配置（User Secrets）
 
@@ -80,12 +114,33 @@ Redis__Password=<Redis密码>
 
 （在 Docker Compose 中通过 `environment` 或 `.env` 提供，`.env` 不应提交。）
 
+## API 与文档
+
+统一响应 `{ code, message, data }`（`code=200` 成功，否则四位业务码；2xxx 为模型提供商模块段）。OpenAPI 文档见 `/openapi/v1.json`。供应商与模型管理接口（节选）：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/api/v1/providers` | 创建供应商（同事务建健康行）|
+| `GET` | `/api/v1/providers?page=&size=` | 分页列出（带健康）|
+| `GET` / `PUT` / `DELETE` | `/api/v1/providers/{id}` | 详情 / 更新 / 删除（级联软删模型与健康）|
+| `POST` | `/api/v1/providers/{id}/enable` \| `/disable` | 启用 / 停用 |
+| `POST` | `/api/v1/providers/{id}/test-connection` | 测试连通性并刷新健康 |
+| `POST` / `GET` | `/api/v1/providers/{providerId}/models` | 在供应商下新增 / 列出模型 |
+| `GET` / `PUT` / `DELETE` | `/api/v1/models/{id}` | 模型详情 / 更新 / 删除 |
+| `POST` | `/api/v1/models/{id}/set-default` \| `/enable` \| `/disable` | 设默认 / 启停 |
+
 ## 构建与测试
 
 ```bash
 dotnet build Hify.sln
 dotnet test  Hify.sln
 ```
+
+> 部分集成测试需要可连的 PostgreSQL（连不上则自动跳过，不报错）。指定测试库：
+> ```bash
+> # 先起依赖：docker compose up -d db   （或 DB_PORT=5433 docker compose up -d db）
+> HIFY_TEST_DB="Host=localhost;Port=5432;Database=hify;Username=hify;Password=hify" dotnet test Hify.sln
+> ```
 
 ### 本地开发脚本
 

@@ -31,41 +31,74 @@ CREATE SCHEMA IF NOT EXISTS mcp;
 -- 模块：model_provider（L0）—— 多模型提供商与模型管理
 -- =============================================================================
 
--- 提供商实例（一个 OpenAI/Claude/Gemini/Ollama 接入配置）。
+-- 提供商实例（一份 OpenAI/Claude/Ollama 接入配置）。
+-- 鉴权差异统一：auth_type(注入方式) + auth_header_name(头名) + api_key_cipher(密文)。
+-- 健康状态另存 provider_health（与本表 1:1），隔离高频探活写与可缓存的配置行。
 CREATE TABLE IF NOT EXISTS model_provider.provider (
-    id            bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name          varchar(128)  NOT NULL DEFAULT '',
-    provider_type varchar(32)   NOT NULL DEFAULT '',   -- openai | claude | gemini | ollama
-    base_url      varchar(512)  NOT NULL DEFAULT '',
-    api_key       varchar(1024) NOT NULL DEFAULT '',   -- 密文存储（应用层加密），不存明文
-    enabled       boolean       NOT NULL DEFAULT true,
-    status        varchar(32)   NOT NULL DEFAULT '',   -- unknown | active | error | disabled
-    created_at    bigint        NOT NULL DEFAULT 0,
-    updated_at    bigint        NOT NULL DEFAULT 0,
-    deleted_at    bigint        NOT NULL DEFAULT 0
+    id               bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name             varchar(128)  NOT NULL DEFAULT '',
+    provider_type    varchar(32)   NOT NULL DEFAULT '',     -- openai | claude | ollama
+    base_url         varchar(512)  NOT NULL DEFAULT '',
+    auth_type        varchar(32)   NOT NULL DEFAULT 'none', -- none | bearer | header
+    auth_header_name varchar(64)   NOT NULL DEFAULT '',     -- header 模式下的头名，如 x-api-key
+    api_key_cipher   varchar(1024) NOT NULL DEFAULT '',     -- 应用层加密后的密钥，禁明文
+    api_key_hint     varchar(16)   NOT NULL DEFAULT '',     -- 末位明文，仅供展示
+    settings         jsonb         NOT NULL DEFAULT '{}',   -- 私有静态配置（如 anthropic-version、organization）
+    enabled          boolean       NOT NULL DEFAULT true,
+    created_at       bigint        NOT NULL DEFAULT 0,
+    updated_at       bigint        NOT NULL DEFAULT 0,
+    deleted_at       bigint        NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_provider_name
     ON model_provider.provider (name) WHERE deleted_at = 0;
 CREATE INDEX IF NOT EXISTS idx_provider_provider_type
     ON model_provider.provider (provider_type) WHERE deleted_at = 0;
 
--- 提供商下的具体模型（chat/embedding）。
+-- 提供商下的具体模型（chat/embedding），一期仅手动录入（source 恒为 manual）。
 CREATE TABLE IF NOT EXISTS model_provider.model (
-    id             bigint       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    provider_id    bigint       NOT NULL DEFAULT 0,    -- -> model_provider.provider.id（应用层维护）
-    name           varchar(128) NOT NULL DEFAULT '',  -- 模型标识，如 gpt-4o / claude-3-5-sonnet
-    model_type     varchar(32)  NOT NULL DEFAULT '',  -- chat | embedding
-    context_window integer      NOT NULL DEFAULT 0,   -- 上下文窗口 token 数
-    dimension      integer      NOT NULL DEFAULT 0,   -- 仅 embedding 模型有意义（如 1536）
-    enabled        boolean      NOT NULL DEFAULT true,
-    created_at     bigint       NOT NULL DEFAULT 0,
-    updated_at     bigint       NOT NULL DEFAULT 0,
-    deleted_at     bigint       NOT NULL DEFAULT 0
+    id                   bigint       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    provider_id          bigint       NOT NULL DEFAULT 0,        -- -> model_provider.provider.id（应用层维护）
+    name                 varchar(128) NOT NULL DEFAULT '',       -- 模型标识，如 gpt-4o / claude-opus-4-8
+    display_name         varchar(128) NOT NULL DEFAULT '',
+    model_type           varchar(32)  NOT NULL DEFAULT '',       -- chat | embedding
+    context_window       bigint       NOT NULL DEFAULT 0,        -- 上下文窗口 token 数
+    max_output_tokens    bigint       NOT NULL DEFAULT 0,
+    embedding_dimensions integer      NOT NULL DEFAULT 0,        -- 仅 embedding 模型有意义（如 1536）
+    supports_streaming   boolean      NOT NULL DEFAULT false,
+    supports_tools       boolean      NOT NULL DEFAULT false,
+    supports_vision      boolean      NOT NULL DEFAULT false,
+    source               varchar(32)  NOT NULL DEFAULT 'manual', -- manual（一期仅手动录入）
+    enabled              boolean      NOT NULL DEFAULT true,
+    is_default           boolean      NOT NULL DEFAULT false,
+    sort_order           integer      NOT NULL DEFAULT 0,
+    created_at           bigint       NOT NULL DEFAULT 0,
+    updated_at           bigint       NOT NULL DEFAULT 0,
+    deleted_at           bigint       NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_model_provider_id
     ON model_provider.model (provider_id) WHERE deleted_at = 0;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_model_provider_id_name
     ON model_provider.model (provider_id, name) WHERE deleted_at = 0;
+-- 每个供应商每种类型至多一个默认模型。
+CREATE UNIQUE INDEX IF NOT EXISTS idx_model_default
+    ON model_provider.model (provider_id, model_type)
+    WHERE is_default = true AND deleted_at = 0;
+
+-- 供应商健康（与 provider 1:1）。探活/连通性测试的结果落此；运行时熔断状态在内存，不入库。
+CREATE TABLE IF NOT EXISTS model_provider.provider_health (
+    id                   bigint       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    provider_id          bigint       NOT NULL DEFAULT 0,           -- -> model_provider.provider.id（1:1）
+    status               varchar(32)  NOT NULL DEFAULT 'unknown',  -- unknown | healthy | unhealthy
+    latency_ms           integer      NOT NULL DEFAULT 0,
+    consecutive_failures integer      NOT NULL DEFAULT 0,
+    last_error           varchar(512) NOT NULL DEFAULT '',         -- 截断、不含凭证
+    checked_at           bigint       NOT NULL DEFAULT 0,          -- 最近探活 epoch ms
+    created_at           bigint       NOT NULL DEFAULT 0,
+    updated_at           bigint       NOT NULL DEFAULT 0,
+    deleted_at           bigint       NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_provider_health_provider_id
+    ON model_provider.provider_health (provider_id) WHERE deleted_at = 0;
 
 
 -- =============================================================================

@@ -1,0 +1,60 @@
+# 本地开发 / 集成测试依赖：PostgreSQL 18（含 pgvector）与 Redis 7。
+# 一键起依赖：  docker compose up -d
+# 首次初始化时（数据卷为空）自动执行根目录 ddl.sql 建库表；改了 DDL 需重置：docker compose down -v 后再 up。
+# 凭证为本地开发默认值，可用环境变量覆盖；生产经 Secret/环境变量注入，不用此文件的默认值。
+services:
+  db:
+    image: pgvector/pgvector:pg18
+    container_name: hify-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hify}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hify}
+      POSTGRES_DB: ${POSTGRES_DB:-hify}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      # PG18 镜像要求卷挂在 /var/lib/postgresql（数据落其下的版本子目录），不再是 /data。
+      - hify-pgdata:/var/lib/postgresql
+      - ./ddl.sql:/docker-entrypoint-initdb.d/01-ddl.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hify} -d ${POSTGRES_DB:-hify}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: hify-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 后端（Hify.Host）。容器内连 db:5432 / redis:6379；密钥经环境变量注入（生产请覆盖默认值）。
+  api:
+    build:
+      context: .
+    container_name: hify-api
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__Host: db
+      Database__Port: "5432"
+      Database__Database: ${POSTGRES_DB:-hify}
+      Database__Username: ${POSTGRES_USER:-hify}
+      Database__Password: ${POSTGRES_PASSWORD:-hify}
+      Redis__Host: redis
+      # 开发默认密钥，生产务必用 MODELPROVIDER_KEY 覆盖为独立的 base64 32 字节随机值。
+      ModelProvider__CredentialProtection__Key: ${MODELPROVIDER_KEY:-8y+ssOgNHSLJZZrGsDDblFsL7uDKoOjS9GIeqyeVqM0=}
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+volumes:
+  hify-pgdata:

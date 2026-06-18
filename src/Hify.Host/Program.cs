@@ -21,6 +21,9 @@ builder.Services.AddHifyConfiguration(builder.Configuration);
 builder.Services.AddHifyHealthChecks();
 builder.Services.AddHifyModules(builder.Configuration);
 
+// OpenAPI 文档（.NET 10 内置，无需第三方）。产出 /openapi/v1.json。
+builder.Services.AddOpenApi();
+
 var app = builder.Build();
 
 // 请求日志（含 TraceId，便于跨日志关联）。置于最外层以覆盖整条管道耗时。
@@ -32,6 +35,7 @@ app.UseSerilogRequestLogging(options =>
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.MapControllers();
+app.MapOpenApi();
 app.MapHifyHealthChecks();
 
 app.Run();

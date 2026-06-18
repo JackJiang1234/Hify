@@ -8,7 +8,7 @@ Hify 是简版 AI Agent 开发平台（参考 Dify），可本地部署，面向
 
 ### 做什么
 
-- 多模型提供商管理（OpenAI、Claude、Gemini、Ollama）
+- 多模型提供商管理（OpenAI、Claude、Ollama）
 - Agent 创建与配置（选模型、绑工具、设系统提示词）
 - 对话引擎（流式响应、多轮对话、上下文管理）
 - 知识库 + RAG（一期只支持 TXT 文档，固定长度分块）
@@ -48,7 +48,7 @@ Hify.sln
 │   ├── Hify.Shared/        # 共享内核：Result<T>、分页、领域事件、EF 基类、Redis/异常封装
 │   ├── Hify.Contracts/     # 模块对外公开的接口与 DTO（模块间唯一可见，用来打断循环依赖）
 │   └── Modules/
-│       ├── Hify.Modules.ModelProvider/   # 模型提供商管理（OpenAI/Claude/Gemini/Ollama 适配）
+│       ├── Hify.Modules.ModelProvider/   # 模型提供商管理（OpenAI/Claude/Ollama 适配）
 │       ├── Hify.Modules.Agent/           # Agent 创建与配置
 │       ├── Hify.Modules.Conversation/    # 对话引擎：流式、多轮、上下文
 │       ├── Hify.Modules.Knowledge/       # 知识库 + RAG
