@@ -1,7 +1,7 @@
 @echo off
 rem Hify local dev helper: run the Host / run tests / build.
 rem Usage: dev.cmd [run|test|build] [port]
-rem   dev.cmd              Run the Host at http://localhost:5080
+rem   dev.cmd              Run the Host at http://localhost:5155
 rem   dev.cmd test         Run all tests
 rem   dev.cmd build        Build the solution
 rem   dev.cmd run 5090     Run the Host on a custom port
@@ -10,7 +10,7 @@ setlocal
 set "TASK=%~1"
 if "%TASK%"=="" set "TASK=run"
 set "PORT=%~2"
-if "%PORT%"=="" set "PORT=5080"
+if "%PORT%"=="" set "PORT=5155"
 
 set "SCRIPT_DIR=%~dp0"
 set "SOLUTION=%SCRIPT_DIR%..\Hify.sln"

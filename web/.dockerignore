@@ -1,0 +1,7 @@
+# 前端镜像构建上下文裁剪：依赖在容器内重新安装，宿主产物/依赖不带入
+node_modules
+dist
+.vite
+*.log
+.env.local
+.env.*.local

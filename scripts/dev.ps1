@@ -12,10 +12,10 @@
     Task to execute: run (default) | test | build.
 
 .PARAMETER Port
-    Listening port for the 'run' task. Default 5080.
+    Listening port for the 'run' task. Default 5155.
 
 .EXAMPLE
-    ./scripts/dev.ps1               # Run the Host at http://localhost:5080
+    ./scripts/dev.ps1               # Run the Host at http://localhost:5155
 .EXAMPLE
     ./scripts/dev.ps1 test          # Run all tests
 .EXAMPLE
@@ -29,7 +29,7 @@ param(
     [ValidateSet('run', 'test', 'build')]
     [string]$Task = 'run',
 
-    [int]$Port = 5080
+    [int]$Port = 5155
 )
 
 $ErrorActionPreference = 'Stop'

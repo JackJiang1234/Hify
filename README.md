@@ -9,18 +9,28 @@
 - 前端：Vue 3 + TypeScript + Vite + Element Plus + Pinia + vue-router（包管理器 pnpm）
 - 容器化：Docker + Docker Compose
 
+## 端口约定（统一）
+
+| 场景 | 后端 | 前端 |
+| --- | --- | --- |
+| 本地调试 | **5155**（`start.cmd` / `dev.ps1` / `dev.cmd` / `launchSettings`；Vite 代理 `/api`→5155） | **5173**（Vite dev server） |
+| 容器部署 | 容器内 **8080**；宿主 `API_PORT`（默认 8080） | Nginx 容器内 **80**，反代 `/api`→`api:8080`；宿主 `WEB_PORT`（默认 8081） |
+
+> 本地调试用 `scripts\start.cmd`（后端 5155 + 前端 5173 一键起）或分别 `dev.ps1` / `pnpm dev`。
+
 ## 快速启动（Docker Compose）
 
-一条命令拉起 PostgreSQL（含 pgvector，首次自动执行根目录 `ddl.sql` 建库表）、Redis 与后端 API：
+一条命令拉起 PostgreSQL（含 pgvector，首次自动执行根目录 `ddl.sql` 建库表）、Redis、后端 API 与前端 Nginx：
 
 ```bash
 docker compose up -d --build
 ```
 
-- API：http://localhost:8080 （健康检查 `GET /api/v1/health`，OpenAPI 文档 `/openapi/v1.json`）
-- 端口被占用时可覆盖：`DB_PORT`（默认 5432）、`REDIS_PORT`（默认 6379）、`API_PORT`（默认 8080）。
-  例：`DB_PORT=5433 docker compose up -d --build`
-- 仅起依赖（本地 `dotnet run` 连它）：`docker compose up -d db redis`
+- 前端：http://localhost:8081 （Nginx 托管，`/api` 反代到后端）
+- 后端 API：http://localhost:8080 （健康检查 `GET /api/v1/health`，OpenAPI 文档 `/openapi/v1.json`）
+- 端口被占用时可覆盖：`DB_PORT`（5432）、`REDIS_PORT`（6379）、`API_PORT`（8080）、`WEB_PORT`（8081）。
+  例：`DB_PORT=5433 WEB_PORT=8088 docker compose up -d --build`
+- 仅起依赖（本地 `dotnet run` / `pnpm dev` 连它）：`docker compose up -d db redis`
 - 改了 `ddl.sql` 需重置数据卷再初始化：`docker compose down -v && docker compose up -d`
 
 > **生产务必覆盖内置开发默认值**（密码与加密密钥）：
@@ -144,7 +154,7 @@ dotnet test  Hify.sln
 
 ### 本地开发脚本
 
-封装常用命令，默认以 Development 运行 Host（http://localhost:5080，健康检查 `/api/v1/health`）。
+封装常用命令，默认以 Development 运行 Host（http://localhost:5155，健康检查 `/api/v1/health`）。
 
 PowerShell / pwsh：
 

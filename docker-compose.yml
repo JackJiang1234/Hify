@@ -56,5 +56,15 @@ services:
     ports:
       - "${API_PORT:-8080}:8080"
 
+  # 前端：Nginx 托管静态产物 + 反代 /api → api:8080（容器内监听 80）。
+  web:
+    build:
+      context: ./web
+    container_name: hify-web
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8081}:80"
+
 volumes:
   hify-pgdata:
