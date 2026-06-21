@@ -106,16 +106,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_provider_health_provider_id
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS agent.agent (
-    id            bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name          varchar(128)  NOT NULL DEFAULT '',
-    description   varchar(512)  NOT NULL DEFAULT '',
-    model_id      bigint        NOT NULL DEFAULT 0,    -- -> model_provider.model.id
-    system_prompt text          NOT NULL DEFAULT '',
-    model_params  jsonb         NOT NULL DEFAULT '{}', -- 生成参数：temperature/top_p/max_tokens 等（避免浮点列）
-    enabled       boolean       NOT NULL DEFAULT true,
-    created_at    bigint        NOT NULL DEFAULT 0,
-    updated_at    bigint        NOT NULL DEFAULT 0,
-    deleted_at    bigint        NOT NULL DEFAULT 0
+    id               bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name             varchar(128)  NOT NULL DEFAULT '',
+    description      varchar(512)  NOT NULL DEFAULT '',
+    model_id         bigint        NOT NULL DEFAULT 0,    -- -> model_provider.model.id
+    system_prompt    text          NOT NULL DEFAULT '',
+    model_params     jsonb         NOT NULL DEFAULT '{}', -- 生成参数：temperature/top_p/max_tokens 等（避免浮点列）
+    retrieval_params jsonb         NOT NULL DEFAULT '{}', -- RAG 检索参数：top_k/score_threshold（Agent 级，避免浮点列）
+    max_iterations   integer       NOT NULL DEFAULT 5,    -- 工具调用循环上限，防死循环烧 token
+    enabled          boolean       NOT NULL DEFAULT true,
+    created_at       bigint        NOT NULL DEFAULT 0,
+    updated_at       bigint        NOT NULL DEFAULT 0,
+    deleted_at       bigint        NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_name
     ON agent.agent (name) WHERE deleted_at = 0;
