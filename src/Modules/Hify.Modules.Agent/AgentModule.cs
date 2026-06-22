@@ -33,6 +33,9 @@ public sealed class AgentModule : IModule
 
         // Agent 配置 CRUD 服务（依赖 DbContext + 跨模块 IModelProviderQuery，注册为 Scoped）。
         services.AddScoped<Features.Agents.AgentService>();
+
+        // 跨模块只读查询：供对话引擎（L2）运行时装配 Agent 配置。
+        services.AddScoped<Hify.Contracts.Agent.IAgentQuery, Features.Agents.AgentQuery>();
     }
 
     private static string BuildConnectionString(DatabaseOptions options) =>

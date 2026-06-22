@@ -223,11 +223,18 @@ CREATE TABLE IF NOT EXISTS conversation.conversation (
 CREATE INDEX IF NOT EXISTS idx_conversation_agent_id
     ON conversation.conversation (agent_id) WHERE deleted_at = 0;
 
+-- 一次用户提问到最终答复可能产生多行（工具循环：user -> assistant(tool_calls) -> tool -> assistant）。
+-- 时序以单调递增的 id 为准（created_at 为 epoch ms，同毫秒会撞，不可作排序键）。
 CREATE TABLE IF NOT EXISTS conversation.message (
     id              bigint       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     conversation_id bigint       NOT NULL DEFAULT 0,   -- -> conversation.conversation.id
     role            varchar(32)  NOT NULL DEFAULT '',  -- system | user | assistant | tool
     content         text         NOT NULL DEFAULT '',
+    tool_calls      jsonb        NOT NULL DEFAULT '[]', -- assistant 请求的工具调用 [{id,name,arguments}]，非工具轮为 []
+    tool_call_id    varchar(64)  NOT NULL DEFAULT '',  -- tool 结果消息回指的调用 id（关联上游 tool_calls 某项）
+    finish_reason   varchar(32)  NOT NULL DEFAULT '',  -- stop | length | tool_calls | error
+    status          varchar(32)  NOT NULL DEFAULT '',  -- streaming | completed | failed | cancelled
+    error_message   varchar(512) NOT NULL DEFAULT '',  -- 失败原因，截断、不含凭证/PII
     model_id        bigint       NOT NULL DEFAULT 0,   -- 实际使用的模型 -> model_provider.model.id
     prompt_tokens   bigint       NOT NULL DEFAULT 0,   -- token 用量用 bigint
     completion_tokens bigint     NOT NULL DEFAULT 0,
