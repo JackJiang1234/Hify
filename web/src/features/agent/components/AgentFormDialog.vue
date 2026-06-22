@@ -31,11 +31,16 @@ const modelGroups = computed(() => {
   return [...grouped.entries()].map(([providerName, items]) => ({ providerName, items }))
 })
 
-const selectedModel = computed(() => props.models.find((model) => model.id === form.modelId) ?? null)
+const selectedModel = computed(
+  () => props.models.find((model) => model.id === form.modelId) ?? null,
+)
 const maxTokensCap = computed(() => selectedModel.value?.maxOutputTokens || undefined)
 // 选了不支持工具的模型却绑了工具：前端先行提示，最终以后端校验为准
 const toolUnsupported = computed(
-  () => selectedModel.value !== null && !selectedModel.value.supportsTools && toolIdsInput.value.length > 0,
+  () =>
+    selectedModel.value !== null &&
+    !selectedModel.value.supportsTools &&
+    toolIdsInput.value.length > 0,
 )
 
 const rules: FormRules<AgentUpsert> = {
@@ -243,7 +248,9 @@ async function submit(): Promise<void> {
           placeholder="输入 MCP 工具 ID 回车添加"
           style="width: 100%"
         />
-        <span v-if="toolUnsupported" class="hint hint--warn">所选模型不支持工具调用，保存会被拒绝</span>
+        <span v-if="toolUnsupported" class="hint hint--warn"
+          >所选模型不支持工具调用，保存会被拒绝</span
+        >
       </el-form-item>
       <el-form-item label="知识库" class="bindings">
         <el-select

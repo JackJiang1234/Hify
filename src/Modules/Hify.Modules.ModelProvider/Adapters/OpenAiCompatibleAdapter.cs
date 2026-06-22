@@ -314,7 +314,8 @@ internal sealed class OpenAiCompatibleAdapter : IModelProviderAdapter
     private sealed record OpenAiChatRequest(
         [property: JsonPropertyName("model")] string Model,
         [property: JsonPropertyName("messages")] IReadOnlyList<OpenAiMessage> Messages,
-        [property: JsonPropertyName("max_tokens")] int MaxTokens,
+        // 新版 OpenAI 模型不再接受 max_tokens，须用 max_completion_tokens（旧字段在新模型上会被拒）。
+        [property: JsonPropertyName("max_completion_tokens")] int MaxTokens,
         [property: JsonPropertyName("temperature")] double? Temperature,
         [property: JsonPropertyName("top_p")] double? TopP,
         [property: JsonPropertyName("stream")] bool Stream,

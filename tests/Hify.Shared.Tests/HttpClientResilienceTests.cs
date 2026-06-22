@@ -107,4 +107,22 @@ public class HttpClientResilienceTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(2, handler.Attempts);
     }
+
+    // RetryCount=0（如 SSE 流式客户端）：管道须能正常构建并请求，且不重试。
+    // 回归：此前 MaxRetryAttempts=0 会在首次请求时抛 ValidationException。
+    [Fact]
+    public async Task RetryCountZero_BuildsPipeline_AndDoesNotRetry()
+    {
+        var handler = new StubHandler(HttpStatusCode.InternalServerError, HttpStatusCode.OK);
+        var services = new ServiceCollection();
+        services.AddHttpClient("stream")
+            .AddHifyResilience(new ResilienceOptions { RetryCount = 0, AttemptTimeoutSeconds = 120 })
+            .ConfigurePrimaryHttpMessageHandler(() => handler);
+        var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("stream");
+
+        var response = await client.GetAsync("https://provider.test/");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode); // 未重试，直接返回首次结果
+        Assert.Equal(1, handler.Attempts);
+    }
 }

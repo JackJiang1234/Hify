@@ -116,7 +116,12 @@ onMounted(() => {
       @current-change="changePage"
     />
 
-    <AgentFormDialog v-model:visible="formVisible" :agent="editing" :models="models" @saved="load" />
+    <AgentFormDialog
+      v-model:visible="formVisible"
+      :agent="editing"
+      :models="models"
+      @saved="load"
+    />
   </div>
 </template>
 

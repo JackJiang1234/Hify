@@ -24,10 +24,18 @@ public sealed class OpenAiCompatibleAdapterTests
     {
         public HttpRequestMessage? LastRequest { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        public string? LastBody { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
-            return Task.FromResult(responder(request));
+            if (request.Content is not null)
+            {
+                // 在请求体被释放前抓取，供断言序列化字段。
+                LastBody = await request.Content.ReadAsStringAsync(cancellationToken);
+            }
+
+            return responder(request);
         }
     }
 
@@ -75,6 +83,21 @@ public sealed class OpenAiCompatibleAdapterTests
         Assert.Equal("/v1/chat/completions", handler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Equal("Bearer", handler.LastRequest.Headers.Authorization!.Scheme);
         Assert.Equal("sk-test-key", handler.LastRequest.Headers.Authorization.Parameter);
+    }
+
+    [Fact]
+    public async Task ChatAsync_Payload_UsesMaxCompletionTokens()
+    {
+        // 回归：新版 OpenAI 模型拒绝 max_tokens，请求体须发 max_completion_tokens。
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK,
+            """{"choices":[{"message":{"content":"x"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1}}"""));
+        var adapter = CreateAdapter(handler);
+        var request = new ChatRequest { Messages = [new ChatMessage { Role = "user", Content = "Hi" }], MaxTokens = 64 };
+
+        await adapter.ChatAsync(Connection, "gpt-4o", request, CancellationToken.None);
+
+        Assert.Contains("\"max_completion_tokens\":64", handler.LastBody);
+        Assert.DoesNotContain("\"max_tokens\"", handler.LastBody);
     }
 
     [Fact]

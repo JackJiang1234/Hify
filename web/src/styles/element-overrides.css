@@ -7,65 +7,65 @@
 
 :root {
   /* --- 主色及其浅色梯度（Element 用这些做 hover / disabled / 浅底） --- */
-  --el-color-primary:          var(--color-primary);
-  --el-color-primary-light-3:  #8c8ce2;
-  --el-color-primary-light-5:  #adadea;
-  --el-color-primary-light-7:  #cecef3;
-  --el-color-primary-light-8:  #dedef7;
-  --el-color-primary-light-9:  var(--violet-50);
-  --el-color-primary-dark-2:   var(--violet-700);
+  --el-color-primary: var(--color-primary);
+  --el-color-primary-light-3: #8c8ce2;
+  --el-color-primary-light-5: #adadea;
+  --el-color-primary-light-7: #cecef3;
+  --el-color-primary-light-8: #dedef7;
+  --el-color-primary-light-9: var(--violet-50);
+  --el-color-primary-dark-2: var(--violet-700);
 
   /* --- 功能色 --- */
   --el-color-success: var(--color-success);
   --el-color-warning: var(--color-warning);
-  --el-color-danger:  var(--color-danger);
-  --el-color-error:   var(--color-danger);
-  --el-color-info:    var(--color-info);
+  --el-color-danger: var(--color-danger);
+  --el-color-error: var(--color-danger);
+  --el-color-info: var(--color-info);
 
   /* --- 文字色 --- */
-  --el-text-color-primary:     var(--color-text-primary);
-  --el-text-color-regular:     var(--color-text-regular);
-  --el-text-color-secondary:   var(--color-text-secondary);
+  --el-text-color-primary: var(--color-text-primary);
+  --el-text-color-regular: var(--color-text-regular);
+  --el-text-color-secondary: var(--color-text-secondary);
   --el-text-color-placeholder: var(--color-text-placeholder);
-  --el-text-color-disabled:    var(--color-text-disabled);
+  --el-text-color-disabled: var(--color-text-disabled);
 
   /* --- 边框 --- */
-  --el-border-color:          var(--color-border);
-  --el-border-color-light:    var(--color-border-light);
-  --el-border-color-lighter:  var(--color-border-light);
-  --el-border-color-hover:    var(--color-border-strong);
-  --el-border-color-darker:   var(--color-border-strong);
+  --el-border-color: var(--color-border);
+  --el-border-color-light: var(--color-border-light);
+  --el-border-color-lighter: var(--color-border-light);
+  --el-border-color-hover: var(--color-border-strong);
+  --el-border-color-darker: var(--color-border-strong);
 
   /* --- 填充 / 背景 --- */
-  --el-fill-color:         var(--color-bg-subtle);
-  --el-fill-color-light:   var(--color-bg-hover);
+  --el-fill-color: var(--color-bg-subtle);
+  --el-fill-color-light: var(--color-bg-hover);
   --el-fill-color-lighter: var(--color-bg-subtle);
-  --el-fill-color-blank:   var(--color-bg-surface);
-  --el-bg-color:           var(--color-bg-surface);
-  --el-bg-color-page:      var(--color-bg-canvas);
-  --el-bg-color-overlay:   var(--color-bg-elevated);
-  --el-mask-color:         var(--color-bg-mask);
+  --el-fill-color-blank: var(--color-bg-surface);
+  --el-bg-color: var(--color-bg-surface);
+  --el-bg-color-page: var(--color-bg-canvas);
+  --el-bg-color-overlay: var(--color-bg-elevated);
+  --el-mask-color: var(--color-bg-mask);
 
   /* --- 圆角 --- */
-  --el-border-radius-base:  var(--radius-md);
+  --el-border-radius-base: var(--radius-md);
   --el-border-radius-small: var(--radius-sm);
   --el-border-radius-round: var(--radius-full);
 
   /* --- 阴影（弹层 / 下拉 / 卡片） --- */
-  --el-box-shadow:        var(--shadow-md);
-  --el-box-shadow-light:  var(--shadow-sm);
-  --el-box-shadow-base:   var(--shadow-md);
-  --el-box-shadow-dark:   var(--shadow-lg);
+  --el-box-shadow: var(--shadow-md);
+  --el-box-shadow-light: var(--shadow-sm);
+  --el-box-shadow-base: var(--shadow-md);
+  --el-box-shadow-dark: var(--shadow-lg);
 
   /* --- 过渡 --- */
-  --el-transition-duration:      var(--duration-base);
+  --el-transition-duration: var(--duration-base);
   --el-transition-duration-fast: var(--duration-fast);
   --el-transition-function-ease-in-out-bezier: var(--ease-standard);
 
   /* --- 字体 --- */
-  --el-font-family:    var(--font-sans);
+  --el-font-family: var(--font-sans);
   --el-font-size-base: var(--font-size-base);
-  --el-font-size-small:var(--font-size-sm);
+  --el-font-size-small: var(--font-size-sm);
 }
 
 /* 键盘可达性：统一焦点环（覆盖 Element 默认细描边，对比更明显） */

@@ -28,14 +28,19 @@ public static class HttpClientResilienceExtensions
             pipeline.AddConcurrencyLimiter(permitLimit: options.MaxConcurrency, queueLimit: options.QueueLimit);
 
             // 重试：网络抖动/超时、5xx、429 退避重试；认证失败（401/403）与 4xx 不重试。
-            pipeline.AddRetry(new HttpRetryStrategyOptions
+            // RetryCount=0 表示禁用重试（如 SSE 流式）——此时不挂重试策略，
+            // 因为 HttpRetryStrategyOptions.MaxRetryAttempts 要求 >=1，置 0 会校验失败。
+            if (options.RetryCount > 0)
             {
-                MaxRetryAttempts = options.RetryCount,
-                BackoffType = DelayBackoffType.Exponential,
-                UseJitter = true,
-                Delay = TimeSpan.FromMilliseconds(options.RetryBaseDelayMs),
-                ShouldHandle = args => new ValueTask<bool>(ShouldRetry(args.Outcome)),
-            });
+                pipeline.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = options.RetryCount,
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    Delay = TimeSpan.FromMilliseconds(options.RetryBaseDelayMs),
+                    ShouldHandle = args => new ValueTask<bool>(ShouldRetry(args.Outcome)),
+                });
+            }
 
             // 熔断：采样窗口内失败率超阈值则开断路，隔离期内快速失败。
             pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions

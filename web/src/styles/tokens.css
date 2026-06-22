@@ -17,7 +17,7 @@
    * ------------------------------------------------------------------------ */
 
   /* 主色：蓝紫 Indigo-Violet（品牌色 / 关键交互） */
-  --violet-50:  #eef0ff;
+  --violet-50: #eef0ff;
   --violet-100: #e0e2ff;
   --violet-200: #c7c9fe;
   --violet-300: #a6a8f9;
@@ -29,7 +29,7 @@
   --violet-900: #272962;
 
   /* 辅色：青色 Cyan（数据 / 状态指示 / 图表强调） */
-  --cyan-50:  #ecfeff;
+  --cyan-50: #ecfeff;
   --cyan-100: #cffafe;
   --cyan-200: #a5f3fc;
   --cyan-300: #67e8f9;
@@ -41,7 +41,7 @@
   --cyan-900: #164e63;
 
   /* 中性灰：冷调 Slate（背景 / 边框 / 文字，偏冷以贴合科技感） */
-  --gray-50:  #f8fafc;
+  --gray-50: #f8fafc;
   --gray-100: #f1f5f9;
   --gray-200: #e2e8f0;
   --gray-300: #cbd5e1;
@@ -53,107 +53,110 @@
   --gray-900: #0f172a;
 
   /* 功能色：成功 / 警告 / 危险 / 信息 */
-  --green-500:  #10b981;  --green-600:  #059669;
-  --amber-500:  #f59e0b;  --amber-600:  #d97706;
-  --red-500:    #ef4444;  --red-600:    #dc2626;
+  --green-500: #10b981;
+  --green-600: #059669;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
   /* info 复用 cyan */
 
   /* ---------------------------------------------------------------------------
    * 2. 品牌语义色（Brand）
    * ------------------------------------------------------------------------ */
-  --color-primary:          var(--violet-500);
-  --color-primary-hover:    var(--violet-600);  /* 悬停加深 */
-  --color-primary-active:   var(--violet-700);  /* 按下更深 */
-  --color-primary-subtle:   var(--violet-50);   /* 浅色填充背景（选中行 / Tag 底） */
-  --color-primary-muted:    var(--violet-100);  /* 次级浅填充（hover 底） */
-  --color-primary-border:   var(--violet-200);  /* 浅色描边 */
-  --color-primary-text:     var(--violet-600);  /* 浅底上的主色文字（满足对比度） */
+  --color-primary: var(--violet-500);
+  --color-primary-hover: var(--violet-600); /* 悬停加深 */
+  --color-primary-active: var(--violet-700); /* 按下更深 */
+  --color-primary-subtle: var(--violet-50); /* 浅色填充背景（选中行 / Tag 底） */
+  --color-primary-muted: var(--violet-100); /* 次级浅填充（hover 底） */
+  --color-primary-border: var(--violet-200); /* 浅色描边 */
+  --color-primary-text: var(--violet-600); /* 浅底上的主色文字（满足对比度） */
 
-  --color-accent:           var(--cyan-500);
-  --color-accent-hover:     var(--cyan-600);
-  --color-accent-subtle:    var(--cyan-50);
-  --color-accent-text:      var(--cyan-700);    /* 浅底上的辅色文字 */
+  --color-accent: var(--cyan-500);
+  --color-accent-hover: var(--cyan-600);
+  --color-accent-subtle: var(--cyan-50);
+  --color-accent-text: var(--cyan-700); /* 浅底上的辅色文字 */
 
   /* ---------------------------------------------------------------------------
    * 3. 背景色阶（Surfaces）—— 浅色主题
    *    canvas(画布) < surface(卡片) < elevated(浮层)，配合阴影做层级
    * ------------------------------------------------------------------------ */
-  --color-bg-canvas:    var(--gray-50);   /* 应用最底层画布（非纯白，降低长时间看表格的眩光） */
-  --color-bg-surface:   #ffffff;          /* 卡片 / 面板 / 表格容器 */
-  --color-bg-elevated:  #ffffff;          /* 下拉 / 弹层 / Popover（靠阴影抬升） */
-  --color-bg-subtle:    var(--gray-100);  /* 斑马纹 / 内嵌区块 / 代码块底 */
-  --color-bg-hover:     var(--gray-100);  /* 行 / 菜单项 hover */
-  --color-bg-active:    var(--gray-200);  /* 按下 / 选中底（中性） */
-  --color-bg-disabled:  var(--gray-100);
-  --color-bg-mask:      rgb(15 23 42 / 45%); /* 模态遮罩 */
+  --color-bg-canvas: var(--gray-50); /* 应用最底层画布（非纯白，降低长时间看表格的眩光） */
+  --color-bg-surface: #ffffff; /* 卡片 / 面板 / 表格容器 */
+  --color-bg-elevated: #ffffff; /* 下拉 / 弹层 / Popover（靠阴影抬升） */
+  --color-bg-subtle: var(--gray-100); /* 斑马纹 / 内嵌区块 / 代码块底 */
+  --color-bg-hover: var(--gray-100); /* 行 / 菜单项 hover */
+  --color-bg-active: var(--gray-200); /* 按下 / 选中底（中性） */
+  --color-bg-disabled: var(--gray-100);
+  --color-bg-mask: rgb(15 23 42 / 45%); /* 模态遮罩 */
 
   /* ---------------------------------------------------------------------------
    * 4. 文字色阶（Text）
    * ------------------------------------------------------------------------ */
-  --color-text-primary:     var(--gray-800); /* 标题 / 主要内容（非纯黑，更柔和） */
-  --color-text-regular:     var(--gray-600); /* 正文 / 表格单元 */
-  --color-text-secondary:   var(--gray-500); /* 次级说明 / 表头 */
+  --color-text-primary: var(--gray-800); /* 标题 / 主要内容（非纯黑，更柔和） */
+  --color-text-regular: var(--gray-600); /* 正文 / 表格单元 */
+  --color-text-secondary: var(--gray-500); /* 次级说明 / 表头 */
   --color-text-placeholder: var(--gray-400); /* 占位符 / 弱提示 */
-  --color-text-disabled:    var(--gray-300);
-  --color-text-inverse:     #ffffff;         /* 深底 / 主色按钮上的文字 */
-  --color-text-link:        var(--violet-600);
-  --color-text-link-hover:  var(--violet-700);
+  --color-text-disabled: var(--gray-300);
+  --color-text-inverse: #ffffff; /* 深底 / 主色按钮上的文字 */
+  --color-text-link: var(--violet-600);
+  --color-text-link-hover: var(--violet-700);
 
   /* ---------------------------------------------------------------------------
    * 5. 边框 / 分隔线（Borders）
    * ------------------------------------------------------------------------ */
-  --color-border:         var(--gray-200); /* 默认边框 / 表格线 */
-  --color-border-light:   var(--gray-100); /* 极浅分隔线 */
-  --color-border-strong:  var(--gray-300); /* 强调边框 / 输入框 hover */
-  --color-border-focus:   var(--violet-500);
+  --color-border: var(--gray-200); /* 默认边框 / 表格线 */
+  --color-border-light: var(--gray-100); /* 极浅分隔线 */
+  --color-border-strong: var(--gray-300); /* 强调边框 / 输入框 hover */
+  --color-border-focus: var(--violet-500);
 
   /* ---------------------------------------------------------------------------
    * 6. 状态色（Status）—— 成对提供：底色 / 文字 / 描边，用于 Tag、Alert、徽标
    * ------------------------------------------------------------------------ */
-  --color-success:        var(--green-600);
-  --color-success-bg:     #ecfdf5;
-  --color-success-text:   #047857;
+  --color-success: var(--green-600);
+  --color-success-bg: #ecfdf5;
+  --color-success-text: #047857;
   --color-success-border: #a7f3d0;
 
-  --color-warning:        var(--amber-600);
-  --color-warning-bg:     #fffbeb;
-  --color-warning-text:   #b45309;
+  --color-warning: var(--amber-600);
+  --color-warning-bg: #fffbeb;
+  --color-warning-text: #b45309;
   --color-warning-border: #fde68a;
 
-  --color-danger:         var(--red-600);
-  --color-danger-bg:      #fef2f2;
-  --color-danger-text:    #b91c1c;
-  --color-danger-border:  #fecaca;
+  --color-danger: var(--red-600);
+  --color-danger-bg: #fef2f2;
+  --color-danger-text: #b91c1c;
+  --color-danger-border: #fecaca;
 
-  --color-info:           var(--cyan-600);
-  --color-info-bg:        var(--cyan-50);
-  --color-info-text:      var(--cyan-700);
-  --color-info-border:    var(--cyan-200);
+  --color-info: var(--cyan-600);
+  --color-info-bg: var(--cyan-50);
+  --color-info-text: var(--cyan-700);
+  --color-info-border: var(--cyan-200);
 
   /* ---------------------------------------------------------------------------
    * 7. 侧边栏（Sidebar）—— 深色，violet 微着色的深 slate，呼应品牌
    * ------------------------------------------------------------------------ */
-  --color-bg-dark:              #0b0c14; /* 深色基底：接近纯黑但带极淡紫调，用于侧边栏 */
-  --color-sidebar-bg:           var(--color-bg-dark); /* 侧边栏底 */
-  --color-sidebar-surface:      #1e2039; /* 侧边栏内抬升块 / Logo 区 */
-  --color-sidebar-border:       #2a2c49; /* 分隔线 */
-  --color-sidebar-text:         #c7c9e2; /* 菜单常态文字（淡薰衣草灰） */
-  --color-sidebar-text-muted:   #8a8cb0; /* 分组标题 / 次级 */
-  --color-sidebar-item-hover:   rgb(255 255 255 / 6%);   /* 菜单项 hover 底 */
-  --color-sidebar-item-active:  rgb(99 91 235 / 20%);    /* 选中项底（主色透明） */
-  --color-sidebar-item-text-active: #ffffff;             /* 选中项文字 */
-  --color-sidebar-accent:       var(--violet-400);       /* 选中指示条 / 图标点缀 */
+  --color-bg-dark: #0b0c14; /* 深色基底：接近纯黑但带极淡紫调，用于侧边栏 */
+  --color-sidebar-bg: var(--color-bg-dark); /* 侧边栏底 */
+  --color-sidebar-surface: #1e2039; /* 侧边栏内抬升块 / Logo 区 */
+  --color-sidebar-border: #2a2c49; /* 分隔线 */
+  --color-sidebar-text: #c7c9e2; /* 菜单常态文字（淡薰衣草灰） */
+  --color-sidebar-text-muted: #8a8cb0; /* 分组标题 / 次级 */
+  --color-sidebar-item-hover: rgb(255 255 255 / 6%); /* 菜单项 hover 底 */
+  --color-sidebar-item-active: rgb(99 91 235 / 20%); /* 选中项底（主色透明） */
+  --color-sidebar-item-text-active: #ffffff; /* 选中项文字 */
+  --color-sidebar-accent: var(--violet-400); /* 选中指示条 / 图标点缀 */
 
   /* ---------------------------------------------------------------------------
    * 8. 圆角（Radius）
    * ------------------------------------------------------------------------ */
-  --radius-xs:   4px;   /* Tag / 徽标 */
-  --radius-sm:   6px;   /* 输入框 / 小按钮 */
-  --radius-md:   8px;   /* 按钮 / 默认控件 */
-  --radius-lg:   12px;  /* 卡片 / 面板 */
-  --radius-xl:   16px;  /* 大卡片 / 弹窗 */
-  --radius-2xl:  20px;  /* 特殊容器 */
-  --radius-full: 9999px;/* 头像 / 胶囊按钮 / 开关 */
+  --radius-xs: 4px; /* Tag / 徽标 */
+  --radius-sm: 6px; /* 输入框 / 小按钮 */
+  --radius-md: 8px; /* 按钮 / 默认控件 */
+  --radius-lg: 12px; /* 卡片 / 面板 */
+  --radius-xl: 16px; /* 大卡片 / 弹窗 */
+  --radius-2xl: 20px; /* 特殊容器 */
+  --radius-full: 9999px; /* 头像 / 胶囊按钮 / 开关 */
 
   /* ---------------------------------------------------------------------------
    * 9. 阴影（Shadows）—— 冷调、低透明度、分层，营造 Linear 式克制层级
@@ -172,17 +175,17 @@
    * 10. 过渡 / 动效（Motion）
    *     标准缓动一致化；尊重 prefers-reduced-motion（见文件底部）
    * ------------------------------------------------------------------------ */
-  --duration-fast:  120ms; /* 颜色 / 透明度等小反馈 */
-  --duration-base:  200ms; /* 默认（hover、展开） */
-  --duration-slow:  320ms; /* 弹层 / 抽屉 */
+  --duration-fast: 120ms; /* 颜色 / 透明度等小反馈 */
+  --duration-base: 200ms; /* 默认（hover、展开） */
+  --duration-slow: 320ms; /* 弹层 / 抽屉 */
 
-  --ease-standard:   cubic-bezier(0.4, 0, 0.2, 1); /* 通用 */
-  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);   /* 入场 */
-  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);   /* 退场 */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* 通用 */
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1); /* 入场 */
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1); /* 退场 */
 
   /* 组合好的常用过渡，直接 transition: var(--transition-base) */
-  --transition-fast:  all var(--duration-fast) var(--ease-standard);
-  --transition-base:  all var(--duration-base) var(--ease-standard);
+  --transition-fast: all var(--duration-fast) var(--ease-standard);
+  --transition-base: all var(--duration-base) var(--ease-standard);
   --transition-colors:
     color var(--duration-fast) var(--ease-standard),
     background-color var(--duration-fast) var(--ease-standard),
@@ -192,56 +195,56 @@
   /* ---------------------------------------------------------------------------
    * 11. 排版（Typography）—— 管理后台偏紧凑
    * ------------------------------------------------------------------------ */
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
-    'Microsoft YaHei', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'SFMono-Regular', Consolas,
-    monospace; /* 代码 / Token 用量 / JSON 配置 */
+  --font-sans:
+    'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'Cascadia Code', 'SFMono-Regular', Consolas, monospace; /* 代码 / Token 用量 / JSON 配置 */
 
-  --font-size-xs:   12px; /* 辅助说明 / 表格次级 */
-  --font-size-sm:   13px; /* 表格 / 表单（后台主力字号） */
+  --font-size-xs: 12px; /* 辅助说明 / 表格次级 */
+  --font-size-sm: 13px; /* 表格 / 表单（后台主力字号） */
   --font-size-base: 14px; /* 正文默认 */
-  --font-size-md:   16px; /* 小标题 */
-  --font-size-lg:   18px; /* 卡片标题 */
-  --font-size-xl:   20px; /* 页面标题 */
-  --font-size-2xl:  24px; /* 大标题 */
+  --font-size-md: 16px; /* 小标题 */
+  --font-size-lg: 18px; /* 卡片标题 */
+  --font-size-xl: 20px; /* 页面标题 */
+  --font-size-2xl: 24px; /* 大标题 */
 
-  --font-weight-normal:   400;
-  --font-weight-medium:   500; /* 表头 / 按钮 / 强调 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500; /* 表头 / 按钮 / 强调 */
   --font-weight-semibold: 600; /* 标题 */
 
-  --line-height-tight:   1.25;
-  --line-height-normal:  1.5;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
   --line-height-relaxed: 1.7; /* 对话气泡正文 */
 
   /* ---------------------------------------------------------------------------
    * 12. 间距（Spacing）—— 4px 基准栅格
    * ------------------------------------------------------------------------ */
-  --space-1:  4px;
-  --space-2:  8px;
-  --space-3:  12px;
-  --space-4:  16px;
-  --space-5:  20px;
-  --space-6:  24px;
-  --space-8:  32px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
 
   /* ---------------------------------------------------------------------------
    * 13. 层级（Z-index）—— 集中管理避免打架
    * ------------------------------------------------------------------------ */
-  --z-base:      0;
-  --z-sticky:    100;  /* 表头吸顶 / 工具栏 */
-  --z-sidebar:   200;
-  --z-dropdown:  1000;
-  --z-overlay:   2000; /* 遮罩 */
-  --z-modal:     2100;
-  --z-popover:   2200;
-  --z-toast:     3000;
+  --z-base: 0;
+  --z-sticky: 100; /* 表头吸顶 / 工具栏 */
+  --z-sidebar: 200;
+  --z-dropdown: 1000;
+  --z-overlay: 2000; /* 遮罩 */
+  --z-modal: 2100;
+  --z-popover: 2200;
+  --z-toast: 3000;
 
   /* 布局尺寸（侧边栏宽度等，供布局组件引用） */
-  --layout-sidebar-width:           240px;
+  --layout-sidebar-width: 240px;
   --layout-sidebar-width-collapsed: 64px;
-  --layout-header-height:           56px;
+  --layout-header-height: 56px;
 }
 
 /* 响应式断点仅作参考（CSS 变量不能用于 @media 条件，写组件时按此对齐）：

@@ -26,10 +26,19 @@ internal sealed class RedisCacheService : ICacheService
         _logger = logger;
     }
 
+    // Redis 未连接时短路：直接降级，避免每条命令阻塞到超时（~连接超时）才抛异常。
+    // 这是延迟的关键——否则 Redis 宕机时每次缓存调用都要等数秒。
+    private bool IsConnected => _connection.IsConnected;
+
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(key);
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (!IsConnected)
+        {
+            return default;
+        }
 
         try
         {
@@ -56,6 +65,11 @@ internal sealed class RedisCacheService : ICacheService
         ArgumentException.ThrowIfNullOrEmpty(key);
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (!IsConnected)
+        {
+            return false;
+        }
+
         try
         {
             return await _connection.GetDatabase().KeyDeleteAsync(key);
@@ -76,6 +90,12 @@ internal sealed class RedisCacheService : ICacheService
         ArgumentException.ThrowIfNullOrEmpty(key);
         ArgumentNullException.ThrowIfNull(factory);
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (!IsConnected)
+        {
+            // 未连接：直接回源，不触碰 Redis，零等待。
+            return await factory(cancellationToken);
+        }
 
         try
         {
@@ -103,6 +123,11 @@ internal sealed class RedisCacheService : ICacheService
         if (ttl <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(ttl), ttl, "TTL 必须为正。");
+        }
+
+        if (!IsConnected)
+        {
+            return;
         }
 
         try

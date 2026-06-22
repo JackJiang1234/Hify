@@ -20,6 +20,16 @@ export const CommonErrorCode = {
   Timeout: 1007,
 } as const
 
+/** Chat 段（4000-4999），与后端 ChatErrorCode 枚举对应 */
+export const ChatErrorCode = {
+  ConversationNotFound: 4001,
+  AgentUnavailable: 4002,
+  ModelUnavailable: 4003,
+  InvalidInput: 4004,
+  UpstreamLlmFailed: 4005,
+  ContextOverflow: 4007,
+} as const
+
 /** 模块分段区间，用于在 UI 上归类/染色 */
 export const ErrorSegment = {
   Common: [1000, 1999],
@@ -41,6 +51,12 @@ const fallbackMessages: Record<number, string> = {
   [CommonErrorCode.Conflict]: '资源状态冲突',
   [CommonErrorCode.TooManyRequests]: '请求过于频繁，请稍后再试',
   [CommonErrorCode.Timeout]: '操作超时',
+  [ChatErrorCode.ConversationNotFound]: '会话不存在，可能已被删除',
+  [ChatErrorCode.AgentUnavailable]: 'Agent 不存在或已停用',
+  [ChatErrorCode.ModelUnavailable]: 'Agent 绑定的模型不可用',
+  [ChatErrorCode.InvalidInput]: '输入内容为空或过长',
+  [ChatErrorCode.UpstreamLlmFailed]: '上游模型调用失败，请重试',
+  [ChatErrorCode.ContextOverflow]: '内容超出模型上下文窗口，请精简后重试',
 }
 
 export function resolveErrorMessage(code: number, message: string): string {

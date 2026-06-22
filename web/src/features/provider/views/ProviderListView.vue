@@ -73,11 +73,9 @@ async function testConnection(provider: ProviderDto): Promise<void> {
 }
 
 async function remove(provider: ProviderDto): Promise<void> {
-  await ElMessageBox.confirm(
-    `确认删除供应商「${provider.name}」？其下模型将一并删除。`,
-    '提示',
-    { type: 'warning' },
-  )
+  await ElMessageBox.confirm(`确认删除供应商「${provider.name}」？其下模型将一并删除。`, '提示', {
+    type: 'warning',
+  })
   await providerApi.remove(provider.id)
   ElMessage.success('已删除')
   await load()
@@ -123,7 +121,9 @@ onMounted(load)
               <el-tag :type="healthMeta(row.health.status).type" size="small">
                 {{ healthMeta(row.health.status).label }}
               </el-tag>
-              <span v-if="row.health.status === 'healthy'" class="muted"> {{ row.health.latencyMs }}ms</span>
+              <span v-if="row.health.status === 'healthy'" class="muted">
+                {{ row.health.latencyMs }}ms</span
+              >
             </span>
           </el-tooltip>
         </template>
