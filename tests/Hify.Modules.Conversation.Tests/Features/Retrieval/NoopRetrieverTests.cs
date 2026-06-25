@@ -10,7 +10,7 @@ public sealed class NoopRetrieverTests
     {
         var retriever = new NoopRetriever();
 
-        var chunks = await retriever.RetrieveAsync([1, 2, 3], "任意查询", topK: 5, CancellationToken.None);
+        var chunks = await retriever.RetrieveAsync([1, 2, 3], "任意查询", topK: 5, scoreThreshold: 0.0, CancellationToken.None);
 
         Assert.Empty(chunks);
     }
@@ -20,7 +20,7 @@ public sealed class NoopRetrieverTests
     {
         var retriever = new NoopRetriever();
 
-        var chunks = await retriever.RetrieveAsync([], "查询", topK: 3, CancellationToken.None);
+        var chunks = await retriever.RetrieveAsync([], "查询", topK: 3, scoreThreshold: 0.0, CancellationToken.None);
 
         Assert.Empty(chunks);
     }

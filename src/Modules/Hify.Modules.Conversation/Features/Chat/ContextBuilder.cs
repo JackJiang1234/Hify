@@ -145,7 +145,12 @@ internal sealed class ContextBuilder
             return agent.SystemPrompt;
         }
 
-        var chunks = await _retriever.RetrieveAsync(agent.KnowledgeBaseIds, userInput, agent.RetrievalParams.TopK, cancellationToken);
+        var chunks = await _retriever.RetrieveAsync(
+            agent.KnowledgeBaseIds,
+            userInput,
+            agent.RetrievalParams.TopK,
+            agent.RetrievalParams.ScoreThreshold,
+            cancellationToken);
         if (chunks.Count == 0)
         {
             return agent.SystemPrompt;

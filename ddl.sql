@@ -179,6 +179,7 @@ CREATE TABLE IF NOT EXISTS knowledge.document (
     content_hash      varchar(64)   NOT NULL DEFAULT '',  -- 去重/变更检测
     status            varchar(32)   NOT NULL DEFAULT '',  -- pending | processing | completed | failed
     char_count        bigint        NOT NULL DEFAULT 0,
+    chunk_count       integer       NOT NULL DEFAULT 0,   -- 已生成分块数，供进度/结果展示，免去 COUNT chunk
     error_message     varchar(512)  NOT NULL DEFAULT '',
     created_at        bigint        NOT NULL DEFAULT 0,
     updated_at        bigint        NOT NULL DEFAULT 0,
@@ -186,6 +187,9 @@ CREATE TABLE IF NOT EXISTS knowledge.document (
 );
 CREATE INDEX IF NOT EXISTS idx_document_knowledge_base_id
     ON knowledge.document (knowledge_base_id) WHERE deleted_at = 0;
+-- 同一知识库内内容去重：相同 content_hash 不重复入库（应用层先查、唯一索引兜底并发）。
+CREATE UNIQUE INDEX IF NOT EXISTS idx_document_kb_id_content_hash
+    ON knowledge.document (knowledge_base_id, content_hash) WHERE deleted_at = 0;
 
 -- 分块 + 向量。关系数据存 PostgreSQL，向量存 pgvector（维度固定 1536）。
 CREATE TABLE IF NOT EXISTS knowledge.chunk (
@@ -203,6 +207,9 @@ CREATE INDEX IF NOT EXISTS idx_chunk_document_id
     ON knowledge.chunk (document_id) WHERE deleted_at = 0;
 CREATE INDEX IF NOT EXISTS idx_chunk_knowledge_base_id
     ON knowledge.chunk (knowledge_base_id) WHERE deleted_at = 0;
+-- 同一文档内分块序号唯一：文档重新处理时按 (doc, index) 幂等覆盖，避免失败重试产生重复块。
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chunk_document_id_chunk_index
+    ON knowledge.chunk (document_id, chunk_index) WHERE deleted_at = 0;
 -- 向量检索 HNSW 索引（余弦距离）。检索须加 LIMIT，禁全量排序。
 CREATE INDEX IF NOT EXISTS idx_chunk_embedding
     ON knowledge.chunk USING hnsw (embedding vector_cosine_ops) WHERE deleted_at = 0;

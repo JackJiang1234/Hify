@@ -38,8 +38,9 @@ public sealed class ConversationModule : IModule
         // 无状态协作者注册为单例。
         services.AddSingleton<ITokenEstimator, CharBasedTokenEstimator>();
         services.AddSingleton<ConversationContextCache>();
-        // 一期 RAG 空 seam（设计 C2=选项1）；Knowledge 就绪后替换实现。
-        services.AddSingleton<IRetriever, NoopRetriever>();
+        // RAG 检索：经 Contracts 调 Knowledge 模块（L2→L1）；检索失败由适配器内部降级。
+        // Scoped——依赖的 IKnowledgeQuery 持有 Knowledge 的 Scoped DbContext。
+        services.AddScoped<IRetriever, KnowledgeRetriever>();
 
         // 依赖 DbContext（Scoped）的应用服务与编排器。
         services.AddScoped<ContextBuilder>();

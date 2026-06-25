@@ -2,8 +2,8 @@ namespace Hify.Modules.Conversation.Features.Retrieval;
 
 /// <summary>
 /// RAG 检索 seam。对话引擎装配上下文时经此取回相关知识片段。
-/// 一期（设计决策 C2=选项1）Knowledge 模块尚未落地，默认实现 <see cref="NoopRetriever"/> 恒返回空；
-/// 待 Knowledge 就绪后替换为真实实现，无需改动对话引擎主流程。
+/// 真实实现 <see cref="KnowledgeRetriever"/> 经 Contracts 调 Knowledge 模块（L2→L1），检索失败时降级为空；
+/// <see cref="NoopRetriever"/> 为恒空实现（测试桩 / 无 Knowledge 时回退）。装配主流程不感知具体实现。
 /// </summary>
 internal interface IRetriever
 {
@@ -11,11 +11,13 @@ internal interface IRetriever
     /// <param name="knowledgeBaseIds">Agent 绑定的知识库 Id 列表。</param>
     /// <param name="query">用户查询文本。</param>
     /// <param name="topK">返回片段上限。</param>
+    /// <param name="scoreThreshold">相似度阈值 <c>[0,1]</c>，低于该值的片段被丢弃；0 表示不过滤。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     Task<IReadOnlyList<RetrievedChunk>> RetrieveAsync(
         IReadOnlyList<long> knowledgeBaseIds,
         string query,
         int topK,
+        double scoreThreshold,
         CancellationToken cancellationToken);
 }
 

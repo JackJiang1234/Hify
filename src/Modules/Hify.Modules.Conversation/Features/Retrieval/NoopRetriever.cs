@@ -1,8 +1,8 @@
 namespace Hify.Modules.Conversation.Features.Retrieval;
 
 /// <summary>
-/// <see cref="IRetriever"/> 的空实现：恒返回空片段列表。一期 RAG 占位（设计 C2=选项1）——
-/// Knowledge 模块就绪前对话引擎不注入任何检索内容，但调用路径与契约已就位。
+/// <see cref="IRetriever"/> 的空实现：恒返回空片段列表。作为测试桩与"无 Knowledge"回退；
+/// 生产默认实现为 <see cref="KnowledgeRetriever"/>。
 /// </summary>
 internal sealed class NoopRetriever : IRetriever
 {
@@ -11,6 +11,7 @@ internal sealed class NoopRetriever : IRetriever
         IReadOnlyList<long> knowledgeBaseIds,
         string query,
         int topK,
+        double scoreThreshold,
         CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<RetrievedChunk>>([]);
 }
