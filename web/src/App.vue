@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChatDotRound, Expand, Fold, Setting, User } from '@element-plus/icons-vue'
+import { ChatDotRound, Collection, Expand, Fold, Setting, User } from '@element-plus/icons-vue'
 
 const route = useRoute()
 
 // 页头标题取自路由 meta.title，缺省回退到品牌名
 const pageTitle = computed(() => (route.meta.title as string | undefined) ?? 'Hify')
+
+// 菜单高亮取顶级区段：详情页（如 /knowledge-bases/:id）仍高亮其列表入口
+const activeMenu = computed(() => '/' + (route.path.split('/')[1] ?? ''))
 
 // 侧边栏折叠状态
 const collapsed = ref(false)
@@ -24,7 +27,7 @@ const collapsed = ref(false)
         <div v-else class="app__brand-mark">H</div>
       </div>
 
-      <el-menu :default-active="route.path" :collapse="collapsed" router class="app__menu">
+      <el-menu :default-active="activeMenu" :collapse="collapsed" router class="app__menu">
         <el-menu-item index="/providers">
           <el-icon><Setting /></el-icon>
           <span>模型管理</span>
@@ -32,6 +35,10 @@ const collapsed = ref(false)
         <el-menu-item index="/agents">
           <el-icon><User /></el-icon>
           <span>Agent 管理</span>
+        </el-menu-item>
+        <el-menu-item index="/knowledge-bases">
+          <el-icon><Collection /></el-icon>
+          <span>知识库</span>
         </el-menu-item>
         <el-menu-item index="/conversations">
           <el-icon><ChatDotRound /></el-icon>

@@ -16,6 +16,18 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Agent 管理' },
   },
   {
+    path: '/knowledge-bases',
+    name: 'knowledge-bases',
+    component: () => import('@/features/knowledge/views/KnowledgeBaseListView.vue'),
+    meta: { title: '知识库' },
+  },
+  {
+    path: '/knowledge-bases/:id',
+    name: 'knowledge-base-detail',
+    component: () => import('@/features/knowledge/views/KnowledgeBaseDetailView.vue'),
+    meta: { title: '知识库' },
+  },
+  {
     path: '/conversations',
     name: 'conversations',
     component: () => import('@/features/conversation/views/ConversationView.vue'),

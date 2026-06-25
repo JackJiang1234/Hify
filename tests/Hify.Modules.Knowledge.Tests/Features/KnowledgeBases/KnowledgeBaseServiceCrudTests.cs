@@ -51,11 +51,12 @@ public sealed class KnowledgeBaseServiceCrudTests : IAsyncLifetime
         ChunkOverlap = kb.ChunkOverlap,
     };
 
-    private static async Task UploadOneDocAsync(KnowledgeDbContext db, long kbId)
+    private static async Task UploadOneDocAsync(
+        KnowledgeDbContext db, long kbId, string content = "一段用于生成分块的内容", string fileName = "doc.txt")
     {
         var documents = new DocumentService(db, new FakeModelInvoker(dimensions: 1536));
         await documents.UploadAsync(
-            new UploadDocumentRequest { KnowledgeBaseId = kbId, FileName = "doc.txt", Content = "一段用于生成分块的内容" },
+            new UploadDocumentRequest { KnowledgeBaseId = kbId, FileName = fileName, Content = content },
             CancellationToken.None);
     }
 
@@ -232,6 +233,28 @@ public sealed class KnowledgeBaseServiceCrudTests : IAsyncLifetime
         Assert.Equal(7001, (await NewService(verify).GetAsync(kb.Id, CancellationToken.None)).Code);
         Assert.Equal(0, await verify.Documents.CountAsync(d => d.KnowledgeBaseId == kb.Id));
         Assert.Equal(0, await verify.Chunks.CountAsync(c => c.KnowledgeBaseId == kb.Id));
+    }
+
+    [Fact]
+    public async Task Get_And_List_ReportDocumentCount()
+    {
+        if (!_available)
+        {
+            return;
+        }
+
+        await using var db = KnowledgeTestDb.NewContext();
+        var kb = await CreateKbAsync(db);
+        await UploadOneDocAsync(db, kb.Id, content: "第一篇文档内容", fileName: "a.txt");
+        await UploadOneDocAsync(db, kb.Id, content: "第二篇文档内容", fileName: "b.txt");
+
+        var get = await NewService(db).GetAsync(kb.Id, CancellationToken.None);
+        Assert.Equal(200, get.Code);
+        Assert.Equal(2, get.Data!.DocumentCount);
+
+        var list = await NewService(db).ListAsync(page: 1, size: 100, CancellationToken.None);
+        var listed = Assert.Single(list.Data!, item => item.Id == kb.Id);
+        Assert.Equal(2, listed.DocumentCount);
     }
 
     [Fact]

@@ -23,6 +23,9 @@ internal sealed record KnowledgeBaseDto
     /// <summary>分块重叠长度（字符数）。</summary>
     public int ChunkOverlap { get; init; }
 
+    /// <summary>库内文档数。<c>&gt; 0</c> 即已有分块，前端据此冻结嵌入模型/分块参数（服务端 7004 为最终权威）。</summary>
+    public int DocumentCount { get; init; }
+
     /// <summary>创建时刻（epoch ms）。</summary>
     public long CreatedAt { get; init; }
 

@@ -65,7 +65,8 @@ internal sealed class KnowledgeBaseService
             return Result<KnowledgeBaseDto>.Fail((int)KnowledgeErrorCode.KnowledgeBaseNameConflict, "知识库名称已存在。");
         }
 
-        return Result<KnowledgeBaseDto>.Ok(KnowledgeBaseMapping.ToDto(knowledgeBase));
+        // 新建库尚无文档，documentCount 恒为 0。
+        return Result<KnowledgeBaseDto>.Ok(KnowledgeBaseMapping.ToDto(knowledgeBase, documentCount: 0));
     }
 
     public async Task<Result<KnowledgeBaseDto>> GetAsync(long id, CancellationToken cancellationToken)
@@ -77,7 +78,8 @@ internal sealed class KnowledgeBaseService
             return Result<KnowledgeBaseDto>.Fail((int)KnowledgeErrorCode.KnowledgeBaseNotFound, "知识库不存在。");
         }
 
-        return Result<KnowledgeBaseDto>.Ok(KnowledgeBaseMapping.ToDto(knowledgeBase));
+        var documentCount = await _db.Documents.CountAsync(document => document.KnowledgeBaseId == id, cancellationToken);
+        return Result<KnowledgeBaseDto>.Ok(KnowledgeBaseMapping.ToDto(knowledgeBase, documentCount));
     }
 
     public async Task<PageResult<KnowledgeBaseDto>> ListAsync(int page, int size, CancellationToken cancellationToken)
@@ -88,7 +90,18 @@ internal sealed class KnowledgeBaseService
         var entities = await query.ApplyPage(pageRequest).ToListAsync(cancellationToken);
         var total = pageRequest.IsFirstPage ? await query.CountAsync(cancellationToken) : 0;
 
-        var items = entities.Select(KnowledgeBaseMapping.ToDto).ToList();
+        // 一次分组统计本页各库的文档数，避免逐行 N+1。
+        var ids = entities.Select(entity => entity.Id).ToList();
+        var counts = (await _db.Documents.AsNoTracking()
+                .Where(document => ids.Contains(document.KnowledgeBaseId))
+                .GroupBy(document => document.KnowledgeBaseId)
+                .Select(group => new { KnowledgeBaseId = group.Key, Count = group.Count() })
+                .ToListAsync(cancellationToken))
+            .ToDictionary(row => row.KnowledgeBaseId, row => row.Count);
+
+        var items = entities
+            .Select(entity => KnowledgeBaseMapping.ToDto(entity, counts.GetValueOrDefault(entity.Id, 0)))
+            .ToList();
         return PageResult<KnowledgeBaseDto>.Ok(items, total, pageRequest.Page, pageRequest.Size);
     }
 
@@ -144,7 +157,8 @@ internal sealed class KnowledgeBaseService
             return Result<KnowledgeBaseDto>.Fail((int)KnowledgeErrorCode.KnowledgeBaseNameConflict, "知识库名称已存在。");
         }
 
-        return Result<KnowledgeBaseDto>.Ok(KnowledgeBaseMapping.ToDto(knowledgeBase));
+        var documentCount = await _db.Documents.CountAsync(document => document.KnowledgeBaseId == id, cancellationToken);
+        return Result<KnowledgeBaseDto>.Ok(KnowledgeBaseMapping.ToDto(knowledgeBase, documentCount));
     }
 
     public async Task<Result<bool>> DeleteAsync(long id, CancellationToken cancellationToken)

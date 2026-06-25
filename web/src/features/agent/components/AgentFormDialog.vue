@@ -4,6 +4,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 
 import { agentApi, type AgentDto, type AgentUpsert } from '@/api/agent'
+import { knowledgeApi } from '@/api/knowledge'
 import type { ChatModelOption } from '../composables/useChatModels'
 import { MAX_BINDINGS, MAX_SYSTEM_PROMPT, PARAM_RANGE, defaultAgentForm } from '../constants'
 
@@ -16,9 +17,24 @@ const submitting = ref(false)
 const formRef = ref<FormInstance>()
 
 const form = reactive<AgentUpsert>(defaultAgentForm())
-// 绑定 ID 以标签输入，提交时校验并转为 number[]（MCP/知识库列表接口上线后可替换为选择器）
+// 工具暂以标签输入 ID（MCP 列表接口上线后可同样替换为选择器）
 const toolIdsInput = ref<string[]>([])
-const knowledgeIdsInput = ref<string[]>([])
+
+// 知识库改为从接口拉取的真实选项（替换原手动输入 ID 的占位）
+const knowledgeBases = ref<{ id: number; name: string }[]>([])
+const kbLoading = ref(false)
+
+async function loadKnowledgeBases(): Promise<void> {
+  kbLoading.value = true
+  try {
+    const result = await knowledgeApi.list({ page: 1, size: 100 })
+    knowledgeBases.value = result.items.map((kb) => ({ id: kb.id, name: kb.name }))
+  } catch {
+    // 拦截器已统一提示
+  } finally {
+    kbLoading.value = false
+  }
+}
 
 // 按供应商分组的模型下拉
 const modelGroups = computed(() => {
@@ -72,6 +88,7 @@ watch(visible, (open) => {
     return
   }
   formRef.value?.clearValidate()
+  void loadKnowledgeBases()
   const initial = props.agent
   if (initial) {
     Object.assign(form, {
@@ -91,11 +108,9 @@ watch(visible, (open) => {
       enabled: initial.enabled,
     })
     toolIdsInput.value = initial.toolIds.map(String)
-    knowledgeIdsInput.value = initial.knowledgeBaseIds.map(String)
   } else {
     Object.assign(form, defaultAgentForm())
     toolIdsInput.value = []
-    knowledgeIdsInput.value = []
   }
 })
 
@@ -106,15 +121,15 @@ async function submit(): Promise<void> {
   }
 
   const toolIds = parseIdList(toolIdsInput.value)
-  const knowledgeBaseIds = parseIdList(knowledgeIdsInput.value)
-  if (toolIds === null || knowledgeBaseIds === null) {
-    ElMessage.error('工具 / 知识库 ID 必须为正整数')
+  if (toolIds === null) {
+    ElMessage.error('工具 ID 必须为正整数')
     return
   }
 
   submitting.value = true
   try {
-    const body: AgentUpsert = { ...form, toolIds, knowledgeBaseIds }
+    // knowledgeBaseIds 已是选择器给出的 number[]，随 form 一并提交
+    const body: AgentUpsert = { ...form, toolIds }
     if (props.agent) {
       await agentApi.update(props.agent.id, body)
       ElMessage.success('已更新')
@@ -254,16 +269,19 @@ async function submit(): Promise<void> {
       </el-form-item>
       <el-form-item label="知识库" class="bindings">
         <el-select
-          v-model="knowledgeIdsInput"
+          v-model="form.knowledgeBaseIds"
           multiple
           filterable
-          allow-create
-          default-first-option
-          :reserve-keyword="false"
           :multiple-limit="MAX_BINDINGS"
-          placeholder="输入知识库 ID 回车添加"
+          :loading="kbLoading"
+          placeholder="选择知识库"
           style="width: 100%"
-        />
+        >
+          <el-option v-for="kb in knowledgeBases" :key="kb.id" :label="kb.name" :value="kb.id" />
+        </el-select>
+        <span v-if="!kbLoading && knowledgeBases.length === 0" class="hint"
+          >暂无知识库，请先在「知识库」中创建</span
+        >
       </el-form-item>
       <el-form-item label="启用">
         <el-switch v-model="form.enabled" />

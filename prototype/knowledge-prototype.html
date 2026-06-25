@@ -1,0 +1,493 @@
+<title>Hify 知识库 — 前端原型</title>
+<style>
+  :root {
+    --violet-400: #8484e2; --violet-500: #5b5bd6; --violet-600: #4f46e5; --violet-700: #4338ca;
+    --violet-50: #eef0ff; --violet-100: #e0e2ff; --violet-200: #c7c9fe;
+    --cyan-400: #22d3ee; --cyan-500: #06b6d4; --cyan-700: #0e7490; --cyan-50: #ecfeff; --cyan-200: #a5f3fc;
+    --gray-50: #f8fafc; --gray-100: #f1f5f9; --gray-200: #e2e8f0; --gray-300: #cbd5e1;
+    --gray-400: #94a3b8; --gray-500: #64748b; --gray-600: #475569; --gray-700: #334155; --gray-800: #1e293b;
+    --bg-dark: #0b0c14; --sidebar-border: #2a2c49; --sidebar-text: #c7c9e2; --sidebar-muted: #8a8cb0;
+    --primary: var(--violet-500); --primary-hover: var(--violet-600);
+    --canvas: var(--gray-50); --surface: #fff; --border: var(--gray-200); --border-strong: var(--gray-300);
+    --text-primary: var(--gray-800); --text-regular: var(--gray-600); --text-secondary: var(--gray-500);
+    --success-bg: #ecfdf5; --success-text: #047857; --success-border: #a7f3d0;
+    --warning-bg: #fffbeb; --warning-text: #b45309; --warning-border: #fde68a;
+    --danger: #dc2626; --danger-bg: #fef2f2; --danger-text: #b91c1c; --danger-border: #fecaca;
+    --info-bg: var(--cyan-50); --info-text: var(--cyan-700); --info-border: var(--cyan-200);
+    --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-full: 9999px;
+    --shadow-xs: 0 1px 2px rgb(15 23 42 / 4%);
+    --shadow-md: 0 2px 4px rgb(15 23 42 / 6%), 0 4px 12px rgb(15 23 42 / 8%);
+    --shadow-xl: 0 8px 16px rgb(15 23 42 / 8%), 0 16px 48px rgb(15 23 42 / 14%);
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .app {
+    font-family: var(--font-sans); color: var(--text-primary);
+    background: var(--canvas); height: 100vh; display: flex; font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- 侧边栏 ---- */
+  .aside { width: 240px; background: var(--bg-dark); border-right: 1px solid var(--sidebar-border);
+    display: flex; flex-direction: column; flex-shrink: 0; }
+  .brand { padding: 14px 20px; border-bottom: 1px solid var(--sidebar-border); }
+  .brand__name { width: fit-content; font-size: 24px; font-weight: 600; letter-spacing: .5px; line-height: 1.2;
+    background: linear-gradient(105deg, var(--violet-400), var(--cyan-400));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .brand__sub { margin-top: 2px; color: var(--sidebar-muted); font-size: 12px; letter-spacing: 1px; }
+  .menu { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .menu__item { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px;
+    border-radius: var(--radius-md); color: rgb(255 255 255 / 85%); font-size: 14px; cursor: pointer;
+    position: relative; transition: background-color .12s, color .12s; }
+  .menu__item:hover { background: rgb(255 255 255 / 10%); color: #fff; }
+  .menu__item.is-active { background: rgb(255 255 255 / 10%); color: #fff; font-weight: 500; }
+  .menu__item.is-active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%; border-radius: 0 4px 4px 0; background: var(--primary); }
+  .menu__item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .aside__footer { padding: 12px 16px; border-top: 1px solid var(--sidebar-border);
+    color: var(--sidebar-muted); font-size: 12px; }
+
+  /* ---- 主区 ---- */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .header { height: 56px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-xs); }
+  .header__title { margin: 0; font-size: 20px; font-weight: 600; }
+  .header__crumb { color: var(--text-secondary); font-weight: 400; font-size: 14px; }
+  .header__crumb b { color: var(--text-primary); font-weight: 600; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* ---- 标签页切换 ---- */
+  .tabs { display: inline-flex; gap: 2px; padding: 4px; background: var(--gray-100);
+    border-radius: var(--radius-md); margin-bottom: 20px; }
+  .tab { border: 0; background: transparent; padding: 7px 16px; border-radius: var(--radius-sm);
+    font: inherit; font-size: 13px; color: var(--text-regular); cursor: pointer; transition: all .12s; }
+  .tab:hover { color: var(--text-primary); }
+  .tab.is-active { background: var(--surface); color: var(--primary); font-weight: 500; box-shadow: var(--shadow-xs); }
+
+  .screen { display: none; }
+  .screen.is-active { display: block; }
+
+  /* ---- 工具栏 / 按钮 ---- */
+  .toolbar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .toolbar .spacer { flex: 1; }
+  .btn { font: inherit; font-size: 14px; border-radius: var(--radius-md); padding: 8px 16px;
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-regular);
+    cursor: pointer; transition: all .12s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: var(--violet-200); color: var(--primary); }
+  .btn--primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn--primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff;
+    box-shadow: 0 2px 8px rgb(91 91 214 / 30%); }
+  .btn--sm { padding: 5px 10px; font-size: 13px; }
+  .btn--link { border: 0; background: transparent; padding: 4px 6px; color: var(--primary); }
+  .btn--link:hover { color: var(--primary-hover); text-decoration: underline; background: transparent; }
+  .btn--link.is-danger { color: var(--danger); }
+  .btn:focus-visible, .tab:focus-visible, .menu__item:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(91 91 214 / 35%); }
+
+  /* ---- 卡片 / 表格 ---- */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs); overflow: hidden; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; padding: 12px 16px; color: var(--text-secondary); font-weight: 500;
+    background: var(--gray-50); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody td { padding: 13px 16px; border-bottom: 1px solid var(--gray-100); color: var(--text-regular); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--gray-50); }
+  td .name { color: var(--text-primary); font-weight: 500; }
+  td .sub { color: var(--text-secondary); font-size: 12px; }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .muted { color: var(--text-secondary); }
+  .actions { display: flex; gap: 2px; white-space: nowrap; }
+
+  /* ---- 状态药丸 ---- */
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: var(--radius-full);
+    font-size: 12px; font-weight: 500; border: 1px solid; line-height: 1.6; }
+  .pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill--success { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+  .pill--info { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+  .pill--danger { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+  .pill--neutral { background: var(--gray-100); color: var(--text-secondary); border-color: var(--border); }
+
+  .pager { display: flex; justify-content: flex-end; gap: 4px; margin-top: 16px; align-items: center;
+    color: var(--text-secondary); font-size: 13px; }
+  .pager .pg { min-width: 30px; height: 30px; border: 1px solid var(--border); background: var(--surface);
+    border-radius: var(--radius-sm); color: var(--text-regular); cursor: pointer; }
+  .pager .pg.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* ---- 注释气泡 ---- */
+  .note { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius-md); font-size: 13px;
+    line-height: 1.6; background: var(--info-bg); border: 1px solid var(--info-border); color: var(--info-text);
+    margin-bottom: 16px; }
+  .note svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+  .note b { color: var(--cyan-700); }
+  .note--warn { background: var(--warning-bg); border-color: var(--warning-border); color: var(--warning-text); }
+
+  /* ---- 文档管理：上传区 ---- */
+  .kb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .kb-head__meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip { font-size: 12px; padding: 3px 10px; border-radius: var(--radius-full); background: var(--violet-50);
+    color: var(--violet-700); border: 1px solid var(--violet-100); }
+  .dropzone { border: 1.5px dashed var(--border-strong); border-radius: var(--radius-lg); background: var(--surface);
+    padding: 28px; text-align: center; color: var(--text-secondary); margin-bottom: 16px; transition: all .12s; }
+  .dropzone:hover { border-color: var(--primary); background: var(--violet-50); }
+  .dropzone__icon { width: 36px; height: 36px; color: var(--gray-400); margin-bottom: 8px; }
+  .dropzone strong { color: var(--text-primary); }
+  .dropzone .hint { font-size: 12px; margin-top: 4px; }
+  .uploading { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md);
+    background: var(--info-bg); border: 1px solid var(--info-border); color: var(--info-text); font-size: 13px; margin-bottom: 16px; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--cyan-200); border-top-color: var(--cyan-500);
+    border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- 检索预览 ---- */
+  .search-grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 18px; box-shadow: var(--shadow-xs); }
+  .panel h3 { margin: 0 0 14px; font-size: 14px; font-weight: 600; }
+  .field { margin-bottom: 14px; }
+  .field > label { display: block; font-size: 13px; color: var(--text-regular); margin-bottom: 6px; }
+  .field .req { color: var(--danger); }
+  .input, .textarea, .select { width: 100%; font: inherit; font-size: 13px; padding: 8px 11px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface);
+    color: var(--text-primary); }
+  .input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgb(91 91 214 / 12%); }
+  .textarea { resize: vertical; min-height: 70px; }
+  .field .tip { font-size: 12px; color: var(--text-secondary); margin-top: 5px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .result { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 12px; }
+  .result:last-child { margin-bottom: 0; }
+  .result__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .result__src { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .result__src svg { width: 14px; height: 14px; }
+  .score { font-family: var(--font-mono); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-sm);
+    background: var(--violet-50); color: var(--violet-700); }
+  .score--mid { background: var(--cyan-50); color: var(--cyan-700); }
+  .score--low { background: var(--gray-100); color: var(--text-secondary); }
+  .result__body { font-size: 13px; line-height: 1.65; color: var(--text-regular); }
+  .result__body mark { background: var(--violet-100); color: var(--violet-700); padding: 0 2px; border-radius: 3px; }
+
+  /* ---- 模态 ---- */
+  .overlay { position: fixed; inset: 0; background: rgb(15 23 42 / 45%); display: none;
+    align-items: flex-start; justify-content: center; padding: 60px 20px; z-index: 100; }
+  .overlay.is-open { display: flex; }
+  .modal { width: 520px; max-width: 100%; background: var(--surface); border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl); overflow: hidden; }
+  .modal__head { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal__head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  .modal__x { border: 0; background: transparent; cursor: pointer; color: var(--text-secondary); font-size: 20px; line-height: 1; padding: 4px; }
+  .modal__body { padding: 22px; max-height: 64vh; overflow-y: auto; }
+  .modal__foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+  .disabled-field { opacity: .6; }
+  .lock-note { display: flex; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 12px;
+    background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning-text); margin-bottom: 16px; line-height: 1.5; }
+  .lock-note svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media (max-width: 860px) { .search-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="app">
+  <!-- 侧边栏（沿用现有控制台外壳） -->
+  <aside class="aside">
+    <div class="brand">
+      <div class="brand__name">Hify</div>
+      <div class="brand__sub">AI AGENT PLATFORM</div>
+    </div>
+    <nav class="menu">
+      <div class="menu__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>模型管理</span></div>
+      <div class="menu__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Agent 管理</span></div>
+      <div class="menu__item is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>知识库</span></div>
+      <div class="menu__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>对话</span></div>
+    </nav>
+    <div class="aside__footer">v0.1</div>
+  </aside>
+
+  <!-- 主区 -->
+  <div class="main">
+    <header class="header">
+      <h1 class="header__title" id="page-title">知识库</h1>
+      <span class="header__crumb" id="crumb"></span>
+    </header>
+
+    <div class="content">
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" data-screen="list" role="tab">知识库列表</button>
+        <button class="tab" data-screen="docs" role="tab">文档管理</button>
+        <button class="tab" data-screen="search" role="tab">检索预览</button>
+      </div>
+
+      <!-- 屏 1：知识库列表 -->
+      <section class="screen is-active" id="screen-list">
+        <div class="toolbar">
+          <button class="btn btn--primary" onclick="openModal('create')">＋ 新建知识库</button>
+          <button class="btn">刷新</button>
+          <span class="spacer"></span>
+          <span class="muted" style="font-size:13px">共 3 个知识库</span>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>名称</th><th>嵌入模型</th><th style="text-align:center">文档</th>
+                  <th style="text-align:center">分块 / 重叠</th><th>创建时间</th><th style="width:230px">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="name">产品手册库</div><div class="sub">公司全线产品使用手册</div></td>
+                  <td>text-embedding-3-small <span class="muted num">·1536</span></td>
+                  <td class="num" style="text-align:center">12</td>
+                  <td class="num" style="text-align:center">1000 / 100</td>
+                  <td class="muted num">2026-06-20</td>
+                  <td><div class="actions">
+                    <button class="btn--link" onclick="gotoDocs()">文档</button>
+                    <button class="btn--link" onclick="gotoSearch()">检索</button>
+                    <button class="btn--link" onclick="openModal('edit')">编辑</button>
+                    <button class="btn--link is-danger">删除</button>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td><div class="name">售后政策库</div><div class="sub">退货、保修、理赔政策文档</div></td>
+                  <td>text-embedding-3-small <span class="muted num">·1536</span></td>
+                  <td class="num" style="text-align:center">5</td>
+                  <td class="num" style="text-align:center">800 / 80</td>
+                  <td class="muted num">2026-06-22</td>
+                  <td><div class="actions">
+                    <button class="btn--link" onclick="gotoDocs()">文档</button>
+                    <button class="btn--link" onclick="gotoSearch()">检索</button>
+                    <button class="btn--link" onclick="openModal('edit')">编辑</button>
+                    <button class="btn--link is-danger">删除</button>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td><div class="name">内部 FAQ</div><div class="sub">员工常见问题解答</div></td>
+                  <td>text-embedding-3-small <span class="muted num">·1536</span></td>
+                  <td class="num" style="text-align:center">23</td>
+                  <td class="num" style="text-align:center">1200 / 150</td>
+                  <td class="muted num">2026-06-23</td>
+                  <td><div class="actions">
+                    <button class="btn--link" onclick="gotoDocs()">文档</button>
+                    <button class="btn--link" onclick="gotoSearch()">检索</button>
+                    <button class="btn--link" onclick="openModal('edit')">编辑</button>
+                    <button class="btn--link is-danger">删除</button>
+                  </div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="pager">
+          <span>共 3 条</span>
+          <button class="pg">‹</button><button class="pg is-active">1</button><button class="pg">›</button>
+        </div>
+      </section>
+
+      <!-- 屏 2：文档管理 -->
+      <section class="screen" id="screen-docs">
+        <div class="kb-head">
+          <div>
+            <div style="font-size:18px;font-weight:600;margin-bottom:6px">售后政策库</div>
+            <div class="kb-head__meta">
+              <span class="chip">text-embedding-3-small · 1536 维</span>
+              <span class="chip">分块 800 / 重叠 80</span>
+              <span class="muted" style="font-size:13px">5 个文档</span>
+            </div>
+          </div>
+          <button class="btn" onclick="switchScreen('list')">← 返回列表</button>
+        </div>
+
+        <div class="note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <div><b>同步处理</b>：上传后即时完成「分块 → 嵌入 → 入库」，可能耗时数秒；成功后文档直接为<b>已完成</b>。若嵌入失败则整体回滚、不留残档，仅弹出错误提示。</div>
+        </div>
+
+        <div class="dropzone" onclick="demoUpload()">
+          <svg class="dropzone__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
+          <div><strong>点击或拖拽 TXT 文件到此上传</strong></div>
+          <div class="hint">一期仅支持 .txt（UTF-8），单文件 ≤ 5MB</div>
+        </div>
+
+        <div class="uploading" id="uploading" style="display:none">
+          <span class="spinner"></span>
+          <span>正在处理 <b>理赔流程.txt</b> —— 分块 + 嵌入中，请稍候…</span>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>文件名</th><th>状态</th><th style="text-align:right">字符数</th><th style="text-align:center">分块</th><th>上传时间</th><th style="width:80px">操作</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="name">退货政策.txt</div></td>
+                  <td><span class="pill pill--success">已完成</span></td>
+                  <td class="num" style="text-align:right">3,240</td>
+                  <td class="num" style="text-align:center">4</td>
+                  <td class="muted num">2026-06-22 14:03</td>
+                  <td><button class="btn--link is-danger">删除</button></td>
+                </tr>
+                <tr>
+                  <td><div class="name">保修条款.txt</div></td>
+                  <td><span class="pill pill--success">已完成</span></td>
+                  <td class="num" style="text-align:right">5,180</td>
+                  <td class="num" style="text-align:center">6</td>
+                  <td class="muted num">2026-06-22 14:05</td>
+                  <td><button class="btn--link is-danger">删除</button></td>
+                </tr>
+                <tr>
+                  <td><div class="name">理赔流程.txt</div></td>
+                  <td><span class="pill pill--success">已完成</span></td>
+                  <td class="num" style="text-align:right">2,960</td>
+                  <td class="num" style="text-align:center">3</td>
+                  <td class="muted num">2026-06-24 09:18</td>
+                  <td><button class="btn--link is-danger">删除</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 屏 3：检索预览 -->
+      <section class="screen" id="screen-search">
+        <div class="note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <div><b>检索预览</b>用于管理员调参（TopK / 相似度阈值），验证召回质量；不影响线上对话。相似度 = 1 − 余弦距离，越大越相关。</div>
+        </div>
+        <div class="search-grid">
+          <div class="panel">
+            <h3>检索参数 · 售后政策库</h3>
+            <div class="field">
+              <label>查询文本 <span class="req">*</span></label>
+              <textarea class="textarea">退货多少天内可以办理？</textarea>
+            </div>
+            <div class="row2">
+              <div class="field">
+                <label>TopK</label>
+                <input class="input num" value="3" />
+                <div class="tip">1–20</div>
+              </div>
+              <div class="field">
+                <label>相似度阈值</label>
+                <input class="input num" value="0.5" />
+                <div class="tip">0–1，0=不过滤</div>
+              </div>
+            </div>
+            <button class="btn btn--primary" style="width:100%">检索</button>
+          </div>
+
+          <div class="panel">
+            <h3>命中片段 <span class="muted" style="font-weight:400">· 3 条</span></h3>
+            <div class="result">
+              <div class="result__top">
+                <span class="result__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>退货政策.txt · 第 1 块</span>
+                <span class="score">0.92</span>
+              </div>
+              <div class="result__body">本公司支持自收到商品起 <mark>7 天内无理由退货</mark>，商品需保持完好、不影响二次销售；超过 7 天但在保修期内的质量问题另见保修条款。</div>
+            </div>
+            <div class="result">
+              <div class="result__top">
+                <span class="result__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>理赔流程.txt · 第 2 块</span>
+                <span class="score score--mid">0.78</span>
+              </div>
+              <div class="result__body">退货退款将在审核通过后 <mark>3–5 个工作日</mark>内原路退回至原支付账户，节假日顺延。</div>
+            </div>
+            <div class="result">
+              <div class="result__top">
+                <span class="result__src"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>保修条款.txt · 第 4 块</span>
+                <span class="score score--low">0.55</span>
+              </div>
+              <div class="result__body">保修期内非人为损坏可免费维修，此类情形不计入退货范围，按保修流程处理。</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- 模态：新建 / 编辑知识库 -->
+<div class="overlay" id="kb-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal__head">
+      <h2 id="modal-title">新建知识库</h2>
+      <button class="modal__x" onclick="closeModal()" aria-label="关闭">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="lock-note" id="lock-note" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>该知识库已有分块，<b>嵌入模型与分块参数不可更改</b>（更改会使存量向量与新向量语义空间不一致）。如需调整请新建知识库。</span>
+      </div>
+      <div class="field">
+        <label>名称 <span class="req">*</span></label>
+        <input class="input" id="f-name" placeholder="如：售后政策库" />
+      </div>
+      <div class="field">
+        <label>描述</label>
+        <textarea class="textarea" placeholder="一句话说明这个知识库的用途"></textarea>
+      </div>
+      <div class="field" id="f-model-wrap">
+        <label>嵌入模型 <span class="req">*</span></label>
+        <select class="select" id="f-model"><option>text-embedding-3-small（1536 维）</option></select>
+        <div class="tip">仅支持 1536 维嵌入模型（与向量库固定维度一致）；列表已自动过滤。</div>
+      </div>
+      <div class="row2" id="f-chunk-wrap">
+        <div class="field">
+          <label>分块长度（字符）</label>
+          <input class="input num" id="f-size" value="1000" />
+          <div class="tip">100–4000</div>
+        </div>
+        <div class="field">
+          <label>重叠长度（字符）</label>
+          <input class="input num" id="f-overlap" value="100" />
+          <div class="tip">需小于分块长度</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal__foot">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn--primary" onclick="closeModal()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const titles = { list: '知识库', docs: '知识库', search: '知识库' };
+  const crumbs = { list: '', docs: ' / <b>售后政策库</b> · 文档', search: ' / <b>售后政策库</b> · 检索预览' };
+
+  function switchScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('is-active'));
+    document.getElementById('screen-' + name).classList.add('is-active');
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.screen === name));
+    document.getElementById('crumb').innerHTML = crumbs[name];
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchScreen(t.dataset.screen)));
+  function gotoDocs() { switchScreen('docs'); }
+  function gotoSearch() { switchScreen('search'); }
+
+  function openModal(mode) {
+    const isEdit = mode === 'edit';
+    document.getElementById('modal-title').textContent = isEdit ? '编辑知识库（已有分块）' : '新建知识库';
+    document.getElementById('lock-note').style.display = isEdit ? 'flex' : 'none';
+    // 编辑且已有分块：冻结嵌入模型与分块参数
+    ['f-model', 'f-size', 'f-overlap'].forEach(id => { document.getElementById(id).disabled = isEdit; });
+    document.getElementById('f-model-wrap').classList.toggle('disabled-field', isEdit);
+    document.getElementById('f-chunk-wrap').classList.toggle('disabled-field', isEdit);
+    document.getElementById('f-name').value = isEdit ? '售后政策库' : '';
+    document.getElementById('kb-modal').classList.add('is-open');
+  }
+  function closeModal() { document.getElementById('kb-modal').classList.remove('is-open'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  let uploaded = false;
+  function demoUpload() {
+    const u = document.getElementById('uploading');
+    u.style.display = 'flex';
+    setTimeout(() => { u.style.display = 'none'; }, 2200);
+  }
+</script>
