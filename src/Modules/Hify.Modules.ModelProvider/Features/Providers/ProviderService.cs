@@ -1,7 +1,7 @@
 using Hify.Contracts.ModelProvider;
 using Hify.Modules.ModelProvider.Domain;
 using Hify.Modules.ModelProvider.Persistence;
-using Hify.Modules.ModelProvider.Security;
+using Hify.Shared.Security;
 using Hify.Shared.Pagination;
 using Hify.Shared.Results;
 

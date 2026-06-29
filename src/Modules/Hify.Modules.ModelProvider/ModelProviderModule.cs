@@ -2,10 +2,10 @@ using Hify.Contracts.ModelProvider;
 
 using Hify.Modules.ModelProvider.Adapters;
 using Hify.Modules.ModelProvider.Persistence;
-using Hify.Modules.ModelProvider.Security;
 using Hify.Shared.Configuration;
 using Hify.Shared.Modularity;
 using Hify.Shared.Resilience;
+using Hify.Shared.Security;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -35,10 +35,8 @@ public sealed class ModelProviderModule : IModule
             options.UseNpgsql(BuildConnectionString(database));
         });
 
-        // 凭证加密：密钥从配置注入。延迟校验（单例首次解析时），缺失密钥不阻断无关模块的 Host 启动。
-        services.AddOptions<CredentialProtectionOptions>()
-            .Bind(configuration.GetSection(CredentialProtectionOptions.SectionName));
-        services.AddSingleton<ICredentialProtector, AesCredentialProtector>();
+        // 凭证加密（app 级共享）：密钥从配置注入。延迟校验（单例首次解析时），缺失密钥不阻断无关模块的 Host 启动。
+        services.AddHifyCredentialProtection(configuration);
 
         // 适配器（裸 HttpClient + resilience）：每类型两组命名客户端——同步（60s、重试）与流式（120s、不重试）。
         // 超时/熔断/舱壁参数后续外化到配置（P8）；此处先用规范默认值。

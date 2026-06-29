@@ -120,8 +120,9 @@ public sealed class ConversationPersistenceIntegrationTests : IAsyncLifetime
         context.Messages.Add(message);
         await context.SaveChangesAsync();
 
-        await using var verify = ConversationTestDb.NewContext();
-        var fetched = await verify.Messages.AsNoTracking().FirstAsync(m => m.Id == message.Id);
+        // 在同一事务连接上重查（AsNoTracking 强制走库，真实 jsonb 往返）；
+        // 事务结束回滚保证零残留——不可另开连接，否则读不到未提交行。
+        var fetched = await context.Messages.AsNoTracking().FirstAsync(m => m.Id == message.Id);
         Assert.Contains("call_1", fetched.ToolCalls);
     }
 }

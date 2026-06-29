@@ -1,9 +1,10 @@
-namespace Hify.Modules.ModelProvider.Security;
+namespace Hify.Shared.Security;
 
 /// <summary>
-/// 供应商密钥的对称加解密。密文落库，明文仅在调用外部 API 拼请求时短暂解出，绝不入日志。
+/// 凭证的对称加解密（app 级共享基建）。密文落库，明文仅在调用外部 API 拼请求时短暂解出，绝不入日志。
+/// 供需要保护密钥的模块（ModelProvider、Mcp 等）共用同一套实现与密钥。
 /// </summary>
-internal interface ICredentialProtector
+public interface ICredentialProtector
 {
     /// <summary>加密明文密钥，返回密文（base64）。空串返回空串。</summary>
     /// <param name="plaintext">明文密钥。</param>

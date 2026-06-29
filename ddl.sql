@@ -290,33 +290,47 @@ CREATE INDEX IF NOT EXISTS idx_workflow_run_workflow_id_created_at
 
 
 -- =============================================================================
--- 模块：mcp（L0）—— MCP 工具接入
+-- 模块：mcp（L0）—— MCP 工具接入（Client 侧：连接外部 MCP Server，发现并缓存工具）
 -- =============================================================================
+-- 一期仅支持 Streamable HTTP 传输（不做 stdio 子进程 / 老式 HTTP+SSE）。
+-- 鉴权差异复用 model_provider.provider 的三件套：auth_type + auth_header_name + api_key_cipher。
+-- 工具调用的请求/结果记录在 conversation.message（tool_calls + role=tool），本模块不另建日志表。
 
+-- MCP Server 连接配置 + 鉴权 + 连接/发现状态（低频探活，状态内联本表，不拆健康表）。
 CREATE TABLE IF NOT EXISTS mcp.mcp_server (
-    id         bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name       varchar(128)  NOT NULL DEFAULT '',
-    transport  varchar(32)   NOT NULL DEFAULT '',   -- stdio | sse | http
-    endpoint   varchar(512)  NOT NULL DEFAULT '',   -- sse/http 端点
-    command    varchar(512)  NOT NULL DEFAULT '',   -- stdio 启动命令
-    args       jsonb         NOT NULL DEFAULT '[]', -- stdio 启动参数数组
-    enabled    boolean       NOT NULL DEFAULT true,
-    status     varchar(32)   NOT NULL DEFAULT '',   -- unknown | connected | error | disabled
-    created_at bigint        NOT NULL DEFAULT 0,
-    updated_at bigint        NOT NULL DEFAULT 0,
-    deleted_at bigint        NOT NULL DEFAULT 0
+    id               bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name             varchar(128)  NOT NULL DEFAULT '',
+    transport        varchar(32)   NOT NULL DEFAULT 'streamable_http', -- 一期固定 streamable_http
+    endpoint         varchar(512)  NOT NULL DEFAULT '',     -- Streamable HTTP 端点 URL，如 https://host/mcp
+    auth_type        varchar(32)   NOT NULL DEFAULT 'none', -- none | bearer | header
+    auth_header_name varchar(64)   NOT NULL DEFAULT '',     -- header 模式下的头名，如 x-api-key
+    api_key_cipher   varchar(1024) NOT NULL DEFAULT '',     -- 应用层加密后的凭证，禁明文、禁入日志
+    api_key_hint     varchar(16)   NOT NULL DEFAULT '',     -- 末位明文，仅供展示
+    timeout_ms       integer       NOT NULL DEFAULT 0,      -- 0=用 appsettings 全局默认；>0 覆盖
+    enabled          boolean       NOT NULL DEFAULT true,
+    status           varchar(32)   NOT NULL DEFAULT 'unknown', -- unknown | connected | error
+    last_error       varchar(512)  NOT NULL DEFAULT '',     -- 最近错误，截断、不含凭证
+    last_synced_at   bigint        NOT NULL DEFAULT 0,      -- 最近一次 tools/list 成功时刻 epoch ms
+    tool_count       integer       NOT NULL DEFAULT 0,      -- 冗余计数，免 COUNT mcp_tool
+    created_at       bigint        NOT NULL DEFAULT 0,
+    updated_at       bigint        NOT NULL DEFAULT 0,
+    deleted_at       bigint        NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_server_name
     ON mcp.mcp_server (name) WHERE deleted_at = 0;
 
--- 从 MCP server 发现的工具。
+-- 从 MCP Server 发现并缓存的工具。
+-- 重新发现按 (server_id, name) 原地 upsert：id 永不变，保护 agent.agent_tool.tool_id 引用稳定。
+-- 服务端移除某工具时仅置 available=false（不软删、不换 id），重现则置回 true。
+-- available（服务端是否仍提供）与 enabled（管理员是否启用）含义独立，互不覆盖。
 CREATE TABLE IF NOT EXISTS mcp.mcp_tool (
     id           bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    server_id    bigint        NOT NULL DEFAULT 0,    -- -> mcp.mcp_server.id
+    server_id    bigint        NOT NULL DEFAULT 0,    -- -> mcp.mcp_server.id（应用层维护）
     name         varchar(128)  NOT NULL DEFAULT '',
-    description  varchar(512)  NOT NULL DEFAULT '',
+    description  text          NOT NULL DEFAULT '',   -- 工具描述，喂给模型、可能较长，用 text
     input_schema jsonb         NOT NULL DEFAULT '{}', -- 工具入参 JSON Schema
-    enabled      boolean       NOT NULL DEFAULT true,
+    available    boolean       NOT NULL DEFAULT true, -- 最近一次发现中服务端是否仍提供该工具
+    enabled      boolean       NOT NULL DEFAULT true, -- 管理员开关
     created_at   bigint        NOT NULL DEFAULT 0,
     updated_at   bigint        NOT NULL DEFAULT 0,
     deleted_at   bigint        NOT NULL DEFAULT 0

@@ -3,7 +3,7 @@ using Hify.Modules.ModelProvider.Adapters;
 using Hify.Modules.ModelProvider.Domain;
 using Hify.Modules.ModelProvider.Invocation;
 using Hify.Modules.ModelProvider.Persistence;
-using Hify.Modules.ModelProvider.Security;
+using Hify.Shared.Security;
 using Hify.Modules.ModelProvider.Tests.Support;
 using Hify.Shared.Results;
 

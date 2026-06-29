@@ -142,7 +142,7 @@ description: >-
 **验证**：`docker compose up -d --build` → 三容器健康 → curl 冒烟：建资源（密钥脱敏）、列表、非法入参得 1001、**测试连接真实外呼**记录健康、`/api/v1/health` 200。
 **⏸ 等待用户确认**：是否容器化 app、用 compose 起容器验证还是 `dotnet run`。
 > 注意：
-> - 敏感项用环境变量（嵌套键用 `__` 分隔，如 `ModelProvider__CredentialProtection__Key`），compose 内置仅作开发默认值，**生产必须覆盖**。
+> - 敏感项用环境变量（嵌套键用 `__` 分隔，如 `CredentialProtection__Key`），compose 内置仅作开发默认值，**生产必须覆盖**。
 > - ⚠️ **改用户已有 User Secrets 前先 `dotnet user-secrets list` 确认**——别覆盖人家原有的本地配置（我们覆盖过 `Database:Password`）。
 > - 健康端点路径以本项目为准（这里是 `/api/v1/health`，不是 `/health`）。
 

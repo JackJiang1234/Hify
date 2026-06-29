@@ -35,7 +35,7 @@ docker compose up -d --build
 
 > **生产务必覆盖内置开发默认值**（密码与加密密钥）：
 > ```bash
-> POSTGRES_PASSWORD=<强密码> MODELPROVIDER_KEY=$(openssl rand -base64 32) docker compose up -d --build
+> POSTGRES_PASSWORD=<强密码> CREDENTIAL_PROTECTION_KEY=$(openssl rand -base64 32) docker compose up -d --build
 > ```
 
 ## 环境要求
@@ -77,15 +77,15 @@ docker compose up -d --build
 
 | 配置键 | 说明 | 默认值 | 是否敏感 |
 | --- | --- | --- | --- |
-| `ModelProvider:CredentialProtection:Key` | 供应商密钥加密用 AES 密钥（base64，16/24/32 字节）。**须跨重启稳定**，否则既有密文无法解密。 | （无，须注入） | **是** |
+| `CredentialProtection:Key` | 凭证加密用 AES 密钥（base64，16/24/32 字节，app 级共享，加密所有模块的凭证）。**须跨重启稳定**，否则既有密文无法解密。 | （无，须注入） | **是** |
 | `ModelProvider:HealthProbe:Enabled` | 是否启用周期健康探活 | `true` | 否 |
 | `ModelProvider:HealthProbe:IntervalSeconds` | 探活间隔（秒） | `60` | 否 |
 | `ModelProvider:HealthProbe:InitialDelaySeconds` | 启动后首次探活延迟（秒） | `30` | 否 |
 
-加密密钥本地设置（生产用环境变量 `ModelProvider__CredentialProtection__Key`）：
+加密密钥本地设置（生产用环境变量 `CredentialProtection__Key`）：
 
 ```bash
-dotnet user-secrets set "ModelProvider:CredentialProtection:Key" "$(openssl rand -base64 32)" --project src/Hify.Host
+dotnet user-secrets set "CredentialProtection:Key" "$(openssl rand -base64 32)" --project src/Hify.Host
 ```
 
 ### 本地开发：设置私密配置（User Secrets）

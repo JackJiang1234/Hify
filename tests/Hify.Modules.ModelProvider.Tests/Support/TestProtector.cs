@@ -1,4 +1,4 @@
-using Hify.Modules.ModelProvider.Security;
+using Hify.Shared.Security;
 
 using Microsoft.Extensions.Options;
 

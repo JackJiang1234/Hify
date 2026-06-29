@@ -3,13 +3,13 @@ using System.Text;
 
 using Microsoft.Extensions.Options;
 
-namespace Hify.Modules.ModelProvider.Security;
+namespace Hify.Shared.Security;
 
 /// <summary>
 /// 基于 AES-GCM 的凭证加解密。密钥从配置注入（跨重启稳定，避免 DataProtection 密钥环丢失导致无法解密）。
 /// 密文布局：<c>nonce(12) || tag(16) || cipher</c> 整体 base64；每次加密用随机 nonce，故同一明文密文各异。
 /// </summary>
-internal sealed class AesCredentialProtector : ICredentialProtector
+public sealed class AesCredentialProtector : ICredentialProtector
 {
     private const int NonceSize = 12; // AES-GCM 推荐 96-bit nonce
     private const int TagSize = 16;   // 128-bit 认证标签
@@ -26,7 +26,7 @@ internal sealed class AesCredentialProtector : ICredentialProtector
         if (string.IsNullOrEmpty(raw))
         {
             throw new InvalidOperationException(
-                $"未配置凭证加密密钥（{CredentialProtectionOptions.SectionName}:Key），无法保护供应商密钥。");
+                $"未配置凭证加密密钥（{CredentialProtectionOptions.SectionName}:Key），无法保护凭证。");
         }
 
         _key = Convert.FromBase64String(raw);

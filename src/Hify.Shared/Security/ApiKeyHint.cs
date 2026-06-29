@@ -1,7 +1,7 @@
-namespace Hify.Modules.ModelProvider.Security;
+namespace Hify.Shared.Security;
 
 /// <summary>从明文密钥生成脱敏提示（仅末位），供 UI 展示；绝不暴露完整密钥。</summary>
-internal static class ApiKeyHint
+public static class ApiKeyHint
 {
     private const int VisibleTailLength = 4;
 

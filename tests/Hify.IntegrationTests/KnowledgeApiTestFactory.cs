@@ -32,7 +32,7 @@ public sealed class KnowledgeApiTestFactory : WebApplicationFactory<Program>
                 ["Database:Username"] = parsed.Username,
                 ["Database:Password"] = parsed.Password,
                 ["Redis:Host"] = "localhost",
-                ["ModelProvider:CredentialProtection:Key"] = Convert.ToBase64String(new byte[32]),
+                ["CredentialProtection:Key"] = Convert.ToBase64String(new byte[32]),
                 ["ModelProvider:HealthProbe:Enabled"] = "false",
             }));
 

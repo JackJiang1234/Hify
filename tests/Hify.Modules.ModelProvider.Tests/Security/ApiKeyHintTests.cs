@@ -1,4 +1,4 @@
-using Hify.Modules.ModelProvider.Security;
+using Hify.Shared.Security;
 
 namespace Hify.Modules.ModelProvider.Tests.Security;
 
