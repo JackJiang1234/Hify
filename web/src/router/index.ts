@@ -45,6 +45,24 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/mcp/views/McpServerDetailView.vue'),
     meta: { title: 'MCP 工具' },
   },
+  {
+    path: '/workflows',
+    name: 'workflows',
+    component: () => import('@/features/workflow/views/WorkflowListView.vue'),
+    meta: { title: '工作流' },
+  },
+  {
+    path: '/workflows/new',
+    name: 'workflow-new',
+    component: () => import('@/features/workflow/views/WorkflowEditorView.vue'),
+    meta: { title: '工作流' },
+  },
+  {
+    path: '/workflows/:id(\\d+)',
+    name: 'workflow-editor',
+    component: () => import('@/features/workflow/views/WorkflowEditorView.vue'),
+    meta: { title: '工作流' },
+  },
 ]
 
 const router = createRouter({

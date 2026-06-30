@@ -255,35 +255,41 @@ CREATE INDEX IF NOT EXISTS idx_message_conversation_id_created_at
 
 
 -- =============================================================================
--- 模块：workflow（L2）—— 简版工作流（JSON 配置，线性 + 条件分支）
+-- 模块：workflow（L2）—— 简版工作流（JSON 配置 + 简单拖拽，线性 + 单层条件分支）
 -- =============================================================================
+-- 定义存单 jsonb（definition: {nodes,edges}），前端 Vue Flow 拖拽产出、引擎按图遍历。
+-- 节点类型：start | llm | tool(MCP) | condition | end。执行为同步（一期），逐节点轨迹存 run.trace。
 
 CREATE TABLE IF NOT EXISTS workflow.workflow (
     id          bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name        varchar(128)  NOT NULL DEFAULT '',
     description varchar(512)  NOT NULL DEFAULT '',
-    definition  jsonb         NOT NULL DEFAULT '{}',  -- 工作流 JSON 定义（节点 + 连线 + 条件）
-    enabled     boolean       NOT NULL DEFAULT true,
+    definition  jsonb         NOT NULL DEFAULT '{}',     -- 工作流 JSON 定义 {nodes,edges}（节点 + 连线 + 条件）
+    status      varchar(32)   NOT NULL DEFAULT 'draft',  -- draft | published（发布前跑图校验）
     created_at  bigint        NOT NULL DEFAULT 0,
     updated_at  bigint        NOT NULL DEFAULT 0,
     deleted_at  bigint        NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_name
     ON workflow.workflow (name) WHERE deleted_at = 0;
+-- 列表按 status 过滤 + id 游标倒序。
+CREATE INDEX IF NOT EXISTS idx_workflow_status
+    ON workflow.workflow (status) WHERE deleted_at = 0;
 
--- 工作流执行记录（节点级明细可后续按需扩展 workflow_node_run）。
+-- 工作流执行记录（节点级明细可后续按需扩展 workflow_node_run；一期逐节点轨迹内联 trace jsonb）。
 CREATE TABLE IF NOT EXISTS workflow.workflow_run (
-    id          bigint       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    workflow_id bigint       NOT NULL DEFAULT 0,   -- -> workflow.workflow.id
-    status      varchar(32)  NOT NULL DEFAULT '',  -- pending | running | succeeded | failed
-    input       jsonb        NOT NULL DEFAULT '{}',
-    output      jsonb        NOT NULL DEFAULT '{}',
-    error_message varchar(512) NOT NULL DEFAULT '',
-    started_at  bigint       NOT NULL DEFAULT 0,
-    finished_at bigint       NOT NULL DEFAULT 0,
-    created_at  bigint       NOT NULL DEFAULT 0,
-    updated_at  bigint       NOT NULL DEFAULT 0,
-    deleted_at  bigint       NOT NULL DEFAULT 0
+    id            bigint       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    workflow_id   bigint       NOT NULL DEFAULT 0,    -- -> workflow.workflow.id
+    status        varchar(32)  NOT NULL DEFAULT '',   -- running | succeeded | failed
+    inputs        jsonb        NOT NULL DEFAULT '{}',  -- 触发输入（满足 start.inputs）
+    output        text         NOT NULL DEFAULT '',    -- 最终输出文本（end 节点产出，纯文本非 JSON）
+    trace         jsonb        NOT NULL DEFAULT '[]',  -- 逐节点轨迹 [{nodeId,status,ms,input,output}]，供调试/展示
+    error_message varchar(512) NOT NULL DEFAULT '',    -- 失败原因，截断、不含凭证/PII
+    started_at    bigint       NOT NULL DEFAULT 0,
+    finished_at   bigint       NOT NULL DEFAULT 0,
+    created_at    bigint       NOT NULL DEFAULT 0,
+    updated_at    bigint       NOT NULL DEFAULT 0,
+    deleted_at    bigint       NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_workflow_run_workflow_id_created_at
     ON workflow.workflow_run (workflow_id, created_at) WHERE deleted_at = 0;

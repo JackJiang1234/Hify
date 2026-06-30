@@ -8,6 +8,7 @@ import {
   Expand,
   Fold,
   Setting,
+  SetUp,
   User,
 } from '@element-plus/icons-vue'
 
@@ -55,6 +56,10 @@ const collapsed = ref(false)
         <el-menu-item index="/mcp-servers">
           <el-icon><Connection /></el-icon>
           <span>MCP 工具</span>
+        </el-menu-item>
+        <el-menu-item index="/workflows">
+          <el-icon><SetUp /></el-icon>
+          <span>工作流</span>
         </el-menu-item>
       </el-menu>
 

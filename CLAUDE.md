@@ -12,13 +12,13 @@ Hify 是简版 AI Agent 开发平台（参考 Dify），可本地部署，面向
 - Agent 创建与配置（选模型、绑工具、设系统提示词）
 - 对话引擎（流式响应、多轮对话、上下文管理）
 - 知识库 + RAG（一期只支持 TXT 文档，固定长度分块）
-- 简版工作流（JSON 配置，线性 + 条件分支，不做可视化拖拽）
+- 简版工作流（JSON 配置 + 简单拖拽画布，线性 + 单层条件分支）
 - MCP 工具接入（Agent 通过 MCP 协议调用外部工具）
 - 管理控制台（模型管理、Agent 配置、对话界面）
 
 ### 不做什么
 
-- 不做可视化工作流拖拽编排
+- 不做复杂可视化编排（任意 DAG、并行、循环、Code 节点、变量联想、运行态回填）——工作流只做线性 + 单层分支的简单拖拽
 - 不做多租户 / 权限体系
 - 不做插件市场、计费系统
 - 不做文本生成应用、WebApp 发布、嵌入组件
@@ -52,7 +52,7 @@ Hify.sln
 │       ├── Hify.Modules.Agent/           # Agent 创建与配置
 │       ├── Hify.Modules.Conversation/    # 对话引擎：流式、多轮、上下文
 │       ├── Hify.Modules.Knowledge/       # 知识库 + RAG
-│       ├── Hify.Modules.Workflow/        # 简版工作流（JSON 配置执行）
+│       ├── Hify.Modules.Workflow/        # 简版工作流（JSON 配置执行 + 简单拖拽画布）
 │       └── Hify.Modules.Mcp/             # MCP 工具接入
 └── tests/
 ```
