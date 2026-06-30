@@ -82,4 +82,9 @@ internal sealed class McpServersController : ControllerBase
     [HttpGet("{id:long}/tools")]
     public Task<Result<IReadOnlyList<McpToolDto>>> ListTools(long id) =>
         _tools.ListByServerAsync(id, HttpContext.RequestAborted);
+
+    /// <summary>清理该 Server 下服务端已移除（不可用）的工具，返回清理数量。</summary>
+    [HttpPost("{id:long}/tools/prune")]
+    public Task<Result<int>> PruneTools(long id) =>
+        _tools.PruneRemovedToolsAsync(id, HttpContext.RequestAborted);
 }

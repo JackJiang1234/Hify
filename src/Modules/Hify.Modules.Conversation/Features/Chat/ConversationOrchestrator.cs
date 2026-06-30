@@ -181,10 +181,10 @@ internal sealed class ConversationOrchestrator
                 break; // 模型不再调用工具 → 去流式产出最终答
             }
 
-            // 发起调用事件（执行前），便于前端展示「正在调用工具」。
+            // 发起调用事件（执行前），便于前端展示「正在调用工具」并可展开看入参。
             foreach (var call in probe.Data.ToolCalls)
             {
-                yield return ChatEvent.ToolCallStarted(call.Id, call.Name);
+                yield return ChatEvent.ToolCallStarted(call.Id, call.Name, call.ArgumentsJson);
             }
 
             // assistant(tool_calls) 必须先于 tool 结果入消息序列（供应商要求）。
@@ -203,7 +203,7 @@ internal sealed class ConversationOrchestrator
                 var (content, isError) = resultsByCallId[call.Id];
                 await PersistToolResultAsync(conversationId, call.Id, content);
                 messages.Add(new ChatMessage { Role = MessageRoles.Tool, Content = content, ToolCallId = call.Id });
-                yield return ChatEvent.ToolCallResult(call.Id, call.Name, isError);
+                yield return ChatEvent.ToolCallResult(call.Id, call.Name, isError, content);
             }
         }
 

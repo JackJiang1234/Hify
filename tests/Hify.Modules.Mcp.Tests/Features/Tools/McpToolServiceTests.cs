@@ -150,4 +150,43 @@ public sealed class McpToolServiceTests
         Assert.Equal(200, result.Code);
         Assert.Empty(result.Data!);
     }
+
+    [Fact]
+    public async Task PruneRemovedTools_SoftDeletesUnavailableOnly()
+    {
+        if (!_available)
+        {
+            return;
+        }
+
+        await using var db = TestDb.NewContext();
+        var serverId = await SeedServerAsync(db);
+        var kept = await SeedToolAsync(db, serverId, "alive", available: true, enabled: true);
+        await SeedToolAsync(db, serverId, "gone1", available: false, enabled: true);
+        await SeedToolAsync(db, serverId, "gone2", available: false, enabled: false);
+
+        var result = await new McpToolService(db).PruneRemovedToolsAsync(serverId, CancellationToken.None);
+
+        Assert.Equal(200, result.Code);
+        Assert.Equal(2, result.Data); // 清理两个不可用
+
+        await using var verifyDb = TestDb.NewContext();
+        var remaining = await verifyDb.McpTools.AsNoTracking().Where(t => t.ServerId == serverId).ToListAsync();
+        Assert.Single(remaining); // 仅可用工具留存
+        Assert.Equal(kept.Id, remaining[0].Id);
+    }
+
+    [Fact]
+    public async Task PruneRemovedTools_MissingServer_ReturnsNotFound()
+    {
+        if (!_available)
+        {
+            return;
+        }
+
+        await using var db = TestDb.NewContext();
+        var result = await new McpToolService(db).PruneRemovedToolsAsync(999_999_999, CancellationToken.None);
+
+        Assert.Equal((int)McpErrorCode.McpServerNotFound, result.Code);
+    }
 }

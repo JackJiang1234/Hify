@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChatDotRound, Collection, Expand, Fold, Setting, User } from '@element-plus/icons-vue'
+import {
+  ChatDotRound,
+  Collection,
+  Connection,
+  Expand,
+  Fold,
+  Setting,
+  User,
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 
@@ -43,6 +51,10 @@ const collapsed = ref(false)
         <el-menu-item index="/conversations">
           <el-icon><ChatDotRound /></el-icon>
           <span>对话</span>
+        </el-menu-item>
+        <el-menu-item index="/mcp-servers">
+          <el-icon><Connection /></el-icon>
+          <span>MCP 工具</span>
         </el-menu-item>
       </el-menu>
 

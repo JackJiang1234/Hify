@@ -58,6 +58,12 @@ internal sealed record ChatEvent
     /// <summary>工具是否报错（仅 <see cref="ChatEventType.ToolResult"/>）。</summary>
     public bool ToolIsError { get; init; }
 
+    /// <summary>工具入参 JSON（仅 <see cref="ChatEventType.ToolCall"/>，供前端展开查看）。</summary>
+    public string ToolArguments { get; init; } = string.Empty;
+
+    /// <summary>工具返回内容（仅 <see cref="ChatEventType.ToolResult"/>，已截断，供前端展开查看）。</summary>
+    public string ToolResultContent { get; init; } = string.Empty;
+
     public static ChatEvent Delta(string text) => new() { Type = ChatEventType.Delta, Text = text };
 
     public static ChatEvent Done(long messageId, string finishReason, long promptTokens, long completionTokens) => new()
@@ -76,18 +82,25 @@ internal sealed record ChatEvent
         ErrorMessage = message,
     };
 
-    public static ChatEvent ToolCallStarted(string callId, string toolName) => new()
+    public static ChatEvent ToolCallStarted(string callId, string toolName, string arguments) => new()
     {
         Type = ChatEventType.ToolCall,
         ToolCallId = callId,
         ToolName = toolName,
+        ToolArguments = arguments,
     };
 
-    public static ChatEvent ToolCallResult(string callId, string toolName, bool isError) => new()
+    public static ChatEvent ToolCallResult(string callId, string toolName, bool isError, string content) => new()
     {
         Type = ChatEventType.ToolResult,
         ToolCallId = callId,
         ToolName = toolName,
         ToolIsError = isError,
+        ToolResultContent = Truncate(content, ToolResultMaxLength),
     };
+
+    private const int ToolResultMaxLength = 4000;
+
+    private static string Truncate(string text, int maxLength) =>
+        text.Length <= maxLength ? text : text[..maxLength];
 }

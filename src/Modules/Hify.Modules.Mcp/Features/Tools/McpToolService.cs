@@ -45,4 +45,29 @@ internal sealed class McpToolService
         await _db.SaveChangesAsync(cancellationToken);
         return Result<bool>.Ok(true);
     }
+
+    /// <summary>
+    /// 清理该 Server 下「服务端已移除」（available=false）的工具：软删之，返回清理数量。
+    /// 管理员主动动作——若有 agent_tool 绑定指向被清理工具，将成为悬挂引用，由调用方（invoker）按
+    /// <c>McpToolNotFound</c> 优雅降级（软删后全局过滤不可见）。仅清理 available=false，可用工具不动（清了也会被下次同步重建）。
+    /// </summary>
+    public async Task<Result<int>> PruneRemovedToolsAsync(long serverId, CancellationToken cancellationToken)
+    {
+        if (!await _db.McpServers.AnyAsync(server => server.Id == serverId, cancellationToken))
+        {
+            return Result<int>.Fail((int)McpErrorCode.McpServerNotFound, "MCP Server 不存在。");
+        }
+
+        var removed = await _db.McpTools
+            .Where(tool => tool.ServerId == serverId && !tool.Available)
+            .ToListAsync(cancellationToken);
+        if (removed.Count == 0)
+        {
+            return Result<int>.Ok(0);
+        }
+
+        _db.McpTools.RemoveRange(removed); // SaveChanges 由 DbContext 转为软删
+        await _db.SaveChangesAsync(cancellationToken);
+        return Result<int>.Ok(removed.Count);
+    }
 }

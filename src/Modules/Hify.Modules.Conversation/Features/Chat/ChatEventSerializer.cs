@@ -24,8 +24,8 @@ internal static class ChatEventSerializer
             },
             Options),
         ChatEventType.Error => JsonSerializer.Serialize(new { type = "error", code = ev.ErrorCode, message = ev.ErrorMessage }, Options),
-        ChatEventType.ToolCall => JsonSerializer.Serialize(new { type = "tool_call", callId = ev.ToolCallId, tool = ev.ToolName }, Options),
-        ChatEventType.ToolResult => JsonSerializer.Serialize(new { type = "tool_result", callId = ev.ToolCallId, tool = ev.ToolName, isError = ev.ToolIsError }, Options),
+        ChatEventType.ToolCall => JsonSerializer.Serialize(new { type = "tool_call", callId = ev.ToolCallId, tool = ev.ToolName, arguments = ev.ToolArguments }, Options),
+        ChatEventType.ToolResult => JsonSerializer.Serialize(new { type = "tool_result", callId = ev.ToolCallId, tool = ev.ToolName, isError = ev.ToolIsError, result = ev.ToolResultContent }, Options),
         _ => "{}",
     };
 }

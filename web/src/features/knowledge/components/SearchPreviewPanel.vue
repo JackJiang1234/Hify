@@ -77,7 +77,7 @@ function scoreClass(score: number): string {
       </el-form>
     </div>
 
-    <div class="panel" v-loading="loading">
+    <div v-loading="loading" class="panel">
       <el-empty v-if="searched && results.length === 0" description="无命中片段" />
       <p v-else-if="!searched" class="placeholder">输入查询并点击「检索」查看命中片段。</p>
       <template v-else>

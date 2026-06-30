@@ -17,6 +17,8 @@ export type ChatEvent =
       completionTokens: number
     }
   | { type: 'error'; code: number; message: string }
+  | { type: 'tool_call'; callId: string; tool: string; arguments: string }
+  | { type: 'tool_result'; callId: string; tool: string; isError: boolean; result: string }
 
 export interface ChatStreamHandlers {
   /** 收到一个已解析的流式事件。 */

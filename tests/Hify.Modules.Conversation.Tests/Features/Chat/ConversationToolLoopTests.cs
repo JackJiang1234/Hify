@@ -90,10 +90,12 @@ public sealed class ConversationToolLoopTests : IAsyncLifetime
 
         var events = await DrainAsync(orchestrator, prepared.Data!);
 
-        // 事件流：工具发起 → 工具结果 → 最终答 delta → done。
-        Assert.Contains(events, e => e.Type == ChatEventType.ToolCall && e.ToolName == "search");
+        // 事件流：工具发起（带入参）→ 工具结果（带返回）→ 最终答 delta → done。
+        var toolCall = Assert.Single(events, e => e.Type == ChatEventType.ToolCall && e.ToolName == "search");
+        Assert.Contains("abc", toolCall.ToolArguments); // 入参可展开
         var toolResult = Assert.Single(events, e => e.Type == ChatEventType.ToolResult);
         Assert.False(toolResult.ToolIsError);
+        Assert.Equal("found it", toolResult.ToolResultContent); // 返回可展开
         Assert.Contains(events, e => e.Type == ChatEventType.Delta && e.Text == "here is the answer");
         Assert.Single(events, e => e.Type == ChatEventType.Done);
 

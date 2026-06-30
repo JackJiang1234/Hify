@@ -108,6 +108,7 @@ export function useChat() {
       role: 'assistant',
       content: '',
       status: 'streaming',
+      toolCalls: [], // 预置以保证工具时间线响应式
     }
     messages.value = [...messages.value, userSeed, assistantSeed]
 
@@ -126,6 +127,21 @@ export function useChat() {
         onEvent: (event) => {
           if (event.type === 'delta') {
             assistant.content += event.text
+          } else if (event.type === 'tool_call') {
+            // 工具发起：追加一条运行中的工具记录。
+            ;(assistant.toolCalls ??= []).push({
+              callId: event.callId,
+              name: event.tool,
+              arguments: event.arguments,
+              status: 'running',
+            })
+          } else if (event.type === 'tool_result') {
+            // 工具完成：按 callId 回填状态与返回。
+            const run = assistant.toolCalls?.find((r) => r.callId === event.callId)
+            if (run) {
+              run.status = event.isError ? 'error' : 'ok'
+              run.result = event.result
+            }
           } else if (event.type === 'done') {
             assistant.id = event.messageId
             assistant.status = 'completed'

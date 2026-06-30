@@ -33,6 +33,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/conversation/views/ConversationView.vue'),
     meta: { title: '对话' },
   },
+  {
+    path: '/mcp-servers',
+    name: 'mcp-servers',
+    component: () => import('@/features/mcp/views/McpServerListView.vue'),
+    meta: { title: 'MCP 工具' },
+  },
+  {
+    path: '/mcp-servers/:id',
+    name: 'mcp-server-detail',
+    component: () => import('@/features/mcp/views/McpServerDetailView.vue'),
+    meta: { title: 'MCP 工具' },
+  },
 ]
 
 const router = createRouter({
