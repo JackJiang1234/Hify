@@ -1,4 +1,5 @@
 using Hify.Contracts.Agent;
+using Hify.Contracts.Mcp;
 using Hify.Contracts.ModelProvider;
 using Hify.Modules.Conversation.Domain;
 using Hify.Modules.Conversation.Features.Context;
@@ -10,10 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hify.Modules.Conversation.Features.Chat;
 
-/// <summary>装配好的一次模型调用：解析出的模型 Id + 供应商无关的对话请求。</summary>
+/// <summary>装配好的一次模型调用：解析出的模型 Id + 供应商无关的对话请求 + 工具名→工具 Id 映射。</summary>
 /// <param name="ModelId">实际使用的模型 Id。</param>
-/// <param name="Request">对话请求（含 system + 裁剪历史 + 本次输入）。</param>
-internal sealed record PreparedChat(long ModelId, ChatRequest Request);
+/// <param name="Request">对话请求（含 system + 裁剪历史 + 本次输入；启用工具时含 Tools）。</param>
+/// <param name="ToolIdsByName">工具名 → MCP 工具 Id 映射，供工具循环把模型的 tool_call 名解析回调用。无工具为空。</param>
+/// <param name="MaxIterations">工具调用循环上限（来自 Agent 配置），防止无限循环耗 token。</param>
+internal sealed record PreparedChat(
+    long ModelId,
+    ChatRequest Request,
+    IReadOnlyDictionary<string, long> ToolIdsByName,
+    int MaxIterations);
 
 /// <summary>
 /// 上下文装配：取 Agent 配置 + 模型元数据 + RAG（seam）+ 裁剪后的历史，组装供应商无关的 <see cref="ChatRequest"/>。
@@ -27,12 +34,15 @@ internal sealed class ContextBuilder
     // 回源时只取近期 N 条历史：裁剪本就会丢更早的，限制此处可界定 DB 查询与缓存体积。
     private const int MaxHistoryMessages = 50;
 
+    private static readonly IReadOnlyDictionary<string, long> EmptyToolMap = new Dictionary<string, long>();
+
     private readonly ConversationDbContext _db;
     private readonly IAgentQuery _agents;
     private readonly IModelProviderQuery _models;
     private readonly IRetriever _retriever;
     private readonly ITokenEstimator _estimator;
     private readonly ConversationContextCache _cache;
+    private readonly IMcpToolQuery _tools;
 
     public ContextBuilder(
         ConversationDbContext db,
@@ -40,7 +50,8 @@ internal sealed class ContextBuilder
         IModelProviderQuery models,
         IRetriever retriever,
         ITokenEstimator estimator,
-        ConversationContextCache cache)
+        ConversationContextCache cache,
+        IMcpToolQuery tools)
     {
         ArgumentNullException.ThrowIfNull(db);
         ArgumentNullException.ThrowIfNull(agents);
@@ -48,12 +59,14 @@ internal sealed class ContextBuilder
         ArgumentNullException.ThrowIfNull(retriever);
         ArgumentNullException.ThrowIfNull(estimator);
         ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(tools);
         _db = db;
         _agents = agents;
         _models = models;
         _retriever = retriever;
         _estimator = estimator;
         _cache = cache;
+        _tools = tools;
     }
 
     /// <summary>装配一次对话调用。</summary>
@@ -127,15 +140,55 @@ internal sealed class ContextBuilder
         messages.AddRange(trimmed);
         messages.Add(new ChatMessage { Role = MessageRoles.User, Content = userInput });
 
+        var (toolDefinitions, toolIdsByName) = await ResolveToolsAsync(agent, model, cancellationToken);
+
         var request = new ChatRequest
         {
             Messages = messages,
             MaxTokens = maxOutput,
             Temperature = agent.ModelParams.Temperature,
             TopP = agent.ModelParams.TopP,
+            Tools = toolDefinitions,
         };
 
-        return Result<PreparedChat>.Ok(new PreparedChat(model.Id, request));
+        return Result<PreparedChat>.Ok(new PreparedChat(model.Id, request, toolIdsByName, agent.MaxIterations));
+    }
+
+    /// <summary>
+    /// 解析 Agent 可调用的工具：仅当模型支持工具且绑定非空时启用，映射为供应商无关的 <see cref="ToolDefinition"/>，
+    /// 并返回工具名→工具 Id 映射供循环回指。无工具/模型不支持/查询失败均降级为空（走纯文本路径）。
+    /// </summary>
+    private async Task<(IReadOnlyList<ToolDefinition> Definitions, IReadOnlyDictionary<string, long> IdsByName)> ResolveToolsAsync(
+        AgentDto agent, ModelDto model, CancellationToken cancellationToken)
+    {
+        if (!model.SupportsTools || agent.ToolIds.Count == 0)
+        {
+            return ([], EmptyToolMap);
+        }
+
+        var result = await _tools.GetInvocableToolsAsync(agent.ToolIds, cancellationToken);
+        if (result.Code != 200 || result.Data is null || result.Data.Count == 0)
+        {
+            return ([], EmptyToolMap);
+        }
+
+        var definitions = new List<ToolDefinition>(result.Data.Count);
+        var idsByName = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var tool in result.Data)
+        {
+            // 工具名在 Agent 工具集内应唯一；重名以首个为准（模型只见名字，无法区分同名）。
+            if (idsByName.TryAdd(tool.Name, tool.Id))
+            {
+                definitions.Add(new ToolDefinition
+                {
+                    Name = tool.Name,
+                    Description = tool.Description,
+                    ParametersJson = tool.InputSchema,
+                });
+            }
+        }
+
+        return (definitions, idsByName);
     }
 
     private async Task<string> ComposeSystemContentAsync(AgentDto agent, string userInput, CancellationToken cancellationToken)
@@ -169,11 +222,14 @@ internal sealed class ContextBuilder
 
         async Task<IReadOnlyList<CachedMessage>> LoadRecentFromDbAsync(CancellationToken ct)
         {
-            // 仅取已完成的 user/assistant 消息；按 id 倒序取近期 N 条后翻回旧→新。
+            // 仅取已完成的 user/assistant 文本消息；按 id 倒序取近期 N 条后翻回旧→新。
+            // 排除工具循环的中间消息：assistant 发起工具调用的轮（ToolCalls!="[]"）与 tool 结果消息不作历史，
+            // 只保留用户输入与最终文本回复（ToolCalls=="[]"）。
             var recent = await _db.Messages.AsNoTracking()
                 .Where(m => m.ConversationId == conversationId
                     && m.Status == MessageStatus.Completed
-                    && (m.Role == MessageRoles.User || m.Role == MessageRoles.Assistant))
+                    && (m.Role == MessageRoles.User || m.Role == MessageRoles.Assistant)
+                    && m.ToolCalls == "[]")
                 .OrderByDescending(m => m.Id)
                 .Take(MaxHistoryMessages)
                 .Select(m => new CachedMessage(m.Role, m.Content))

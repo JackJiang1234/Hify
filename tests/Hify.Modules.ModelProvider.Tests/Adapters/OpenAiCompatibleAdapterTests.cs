@@ -206,4 +206,76 @@ public sealed class OpenAiCompatibleAdapterTests
         Assert.Equal(2002, result.Code);
         Assert.Null(result.Data);
     }
+
+    [Fact]
+    public async Task ChatAsync_WithTools_SerializesToolsAsFunctionObjects()
+    {
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK,
+            """{"choices":[{"message":{"content":"x"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1}}"""));
+        var adapter = CreateAdapter(handler);
+        var request = new ChatRequest
+        {
+            Messages = [new ChatMessage { Role = "user", Content = "find" }],
+            MaxTokens = 64,
+            Tools = [new ToolDefinition
+            {
+                Name = "search",
+                Description = "搜索订单",
+                ParametersJson = """{"type":"object","properties":{"q":{"type":"string"}}}""",
+            }],
+        };
+
+        await adapter.ChatAsync(Connection, "gpt-4o", request, CancellationToken.None);
+
+        Assert.Contains("\"tools\"", handler.LastBody);
+        Assert.Contains("\"type\":\"function\"", handler.LastBody);
+        Assert.Contains("\"name\":\"search\"", handler.LastBody);
+        Assert.Contains("\"parameters\"", handler.LastBody);
+        Assert.Contains("\"properties\"", handler.LastBody); // schema 作为对象嵌入，非字符串
+    }
+
+    [Fact]
+    public async Task ChatAsync_ParsesToolCallsFromResponse()
+    {
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK,
+            """
+            {"choices":[{"message":{"content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"search","arguments":"{\"q\":\"abc\"}"}}]},"finish_reason":"tool_calls"}],
+             "usage":{"prompt_tokens":5,"completion_tokens":2}}
+            """));
+        var adapter = CreateAdapter(handler);
+        var request = new ChatRequest { Messages = [new ChatMessage { Role = "user", Content = "find" }], MaxTokens = 64 };
+
+        var result = await adapter.ChatAsync(Connection, "gpt-4o", request, CancellationToken.None);
+
+        Assert.Equal(200, result.Code);
+        Assert.Equal("tool_calls", result.Data!.FinishReason);
+        var call = Assert.Single(result.Data.ToolCalls);
+        Assert.Equal("call_1", call.Id);
+        Assert.Equal("search", call.Name);
+        Assert.Contains("abc", call.ArgumentsJson);
+    }
+
+    [Fact]
+    public async Task ChatAsync_SerializesAssistantToolCallsAndToolResultMessages()
+    {
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK,
+            """{"choices":[{"message":{"content":"done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1}}"""));
+        var adapter = CreateAdapter(handler);
+        var request = new ChatRequest
+        {
+            Messages =
+            [
+                new ChatMessage { Role = "user", Content = "find" },
+                new ChatMessage { Role = "assistant", ToolCalls = [new ToolCall { Id = "call_1", Name = "search", ArgumentsJson = "{}" }] },
+                new ChatMessage { Role = "tool", Content = "result text", ToolCallId = "call_1" },
+            ],
+            MaxTokens = 64,
+        };
+
+        await adapter.ChatAsync(Connection, "gpt-4o", request, CancellationToken.None);
+
+        Assert.Contains("\"tool_calls\"", handler.LastBody);
+        Assert.Contains("\"tool_call_id\":\"call_1\"", handler.LastBody);
+        Assert.Contains("\"role\":\"tool\"", handler.LastBody);
+    }
 }

@@ -14,4 +14,7 @@ public record ChatRequest
 
     /// <summary>核采样 top-p（可选）。</summary>
     public double? TopP { get; init; }
+
+    /// <summary>可供模型调用的工具定义；为空表示本次不启用工具调用。不支持工具的供应商将忽略。</summary>
+    public IReadOnlyList<ToolDefinition> Tools { get; init; } = [];
 }

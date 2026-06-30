@@ -1,3 +1,4 @@
+using Hify.Contracts.Mcp;
 using Hify.Modules.Conversation.Domain;
 using Hify.Modules.Conversation.Features.Chat;
 using Hify.Modules.Conversation.Features.Context;
@@ -25,14 +26,16 @@ public sealed class ContextBuilderTests : IAsyncLifetime
     private static ContextBuilder NewBuilder(
         ConversationDbContext db,
         FakeAgentQuery? agents = null,
-        FakeModelProviderQuery? models = null) =>
+        FakeModelProviderQuery? models = null,
+        IMcpToolQuery? tools = null) =>
         new(
             db,
             agents ?? new FakeAgentQuery().Add(FakeAgentQuery.ChatAgent(AgentId, ModelId)),
             models ?? new FakeModelProviderQuery().Add(FakeModelProviderQuery.ChatModel(ModelId)),
             new NoopRetriever(),
             new CharBasedTokenEstimator(),
-            new ConversationContextCache(new PassthroughCacheService()));
+            new ConversationContextCache(new PassthroughCacheService()),
+            tools ?? new FakeMcpToolQuery());
 
     private static async Task<long> SeedConversationAsync(ConversationDbContext db, params (string Role, string Content)[] history)
     {

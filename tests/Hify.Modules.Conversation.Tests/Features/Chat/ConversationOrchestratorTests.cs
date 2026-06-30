@@ -34,10 +34,11 @@ public sealed class ConversationOrchestratorTests : IAsyncLifetime
             new FakeModelProviderQuery().Add(FakeModelProviderQuery.ChatModel(ModelId)),
             new NoopRetriever(),
             new CharBasedTokenEstimator(),
-            NewCache());
+            NewCache(),
+            new FakeMcpToolQuery());
 
     private static ConversationOrchestrator NewOrchestrator(ConversationDbContext db, IModelInvoker invoker) =>
-        new(db, NewContextBuilder(db), invoker, NewCache());
+        new(db, NewContextBuilder(db), invoker, new FakeMcpToolInvoker(), NewCache());
 
     private static async Task<long> SeedConversationAsync(ConversationDbContext db, string title = "")
     {
@@ -225,7 +226,7 @@ public sealed class ConversationOrchestratorTests : IAsyncLifetime
 
         // 第二轮：用记录调用消息的替身，断言请求里带了上一轮历史。
         var recordingInvoker = new RecordingInvoker();
-        var orchestrator = new ConversationOrchestrator(db, NewContextBuilder(db), recordingInvoker, NewCache());
+        var orchestrator = new ConversationOrchestrator(db, NewContextBuilder(db), recordingInvoker, new FakeMcpToolInvoker(), NewCache());
         var prepared = await orchestrator.PrepareAsync(convId, "second question", CancellationToken.None);
         await DrainAsync(orchestrator, prepared.Data!, CancellationToken.None);
 

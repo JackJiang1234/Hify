@@ -17,7 +17,8 @@ namespace Hify.Modules.Conversation;
 
 /// <summary>
 /// Conversation 模块注册入口（L2 编排层，依赖 Agent/ModelProvider/Knowledge/Mcp，仅经 Contracts）。
-/// 负责对话引擎：流式响应（SSE）、多轮对话、上下文管理。一期纯文本，无工具循环。
+/// 负责对话引擎：流式响应（SSE）、多轮对话、上下文管理、MCP 工具循环（非流式迭代探测 + 最终答流式）。
+/// 工具查询/调用经 IMcpToolQuery/IMcpToolInvoker（由 Mcp 模块注册）注入，本模块不直接依赖 Mcp 实现。
 /// 控制器与 FluentValidation 校验器由 Host 自动发现，无需在此注册。
 /// </summary>
 public sealed class ConversationModule : IModule

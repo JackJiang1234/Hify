@@ -1,0 +1,436 @@
+<style>
+  :root {
+    /* palette */
+    --violet-50:#eef0ff; --violet-100:#e0e2ff; --violet-200:#c7c9fe; --violet-400:#8484e2;
+    --violet-500:#5b5bd6; --violet-600:#4f46e5; --violet-700:#4338ca;
+    --cyan-500:#06b6d4; --cyan-700:#0e7490;
+    --gray-50:#f8fafc; --gray-100:#f1f5f9; --gray-200:#e2e8f0; --gray-300:#cbd5e1;
+    --gray-400:#94a3b8; --gray-500:#64748b; --gray-600:#475569; --gray-700:#334155; --gray-800:#1e293b;
+    /* semantic */
+    --primary:var(--violet-500); --primary-text:var(--violet-600);
+    --canvas:var(--gray-50); --surface:#fff; --subtle:var(--gray-100);
+    --text-primary:var(--gray-800); --text-regular:var(--gray-600); --text-secondary:var(--gray-500);
+    --border:var(--gray-200); --border-light:var(--gray-100);
+    --success-bg:#ecfdf5; --success-text:#047857; --success-border:#a7f3d0;
+    --danger-bg:#fef2f2; --danger-text:#b91c1c; --danger-border:#fecaca;
+    --warning-bg:#fffbeb; --warning-text:#b45309; --warning-border:#fde68a;
+    --info-bg:#ecfeff; --info-text:#0e7490; --info-border:#a5f3fc;
+    --neutral-bg:var(--gray-100); --neutral-text:var(--gray-500); --neutral-border:var(--gray-200);
+    /* sidebar */
+    --sb-bg:#0b0c14; --sb-surface:#1e2039; --sb-border:#2a2c49;
+    --sb-text:#c7c9e2; --sb-muted:#8a8cb0;
+    --radius-xs:4px; --radius-sm:6px; --radius-md:8px; --radius-lg:12px; --radius-xl:16px; --radius-full:9999px;
+    --shadow-sm:0 1px 2px rgb(15 23 42/6%),0 1px 3px rgb(15 23 42/4%);
+    --shadow-md:0 2px 4px rgb(15 23 42/6%),0 4px 12px rgb(15 23 42/8%);
+    --shadow-xl:0 8px 16px rgb(15 23 42/8%),0 16px 48px rgb(15 23 42/14%);
+    --font-sans:'Inter',system-ui,-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    --font-mono:'JetBrains Mono','Cascadia Code',Consolas,monospace;
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; }
+  .console {
+    font-family:var(--font-sans); color:var(--text-primary);
+    background:var(--canvas); display:flex; min-height:100vh; font-size:14px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- sidebar ---------- */
+  .sidebar {
+    width:240px; flex:none; background:var(--sb-bg); border-right:1px solid var(--sb-border);
+    display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+  }
+  .brand { padding:14px 20px; border-bottom:1px solid var(--sb-border); min-height:56px; display:flex; flex-direction:column; justify-content:center; }
+  .brand-name { width:fit-content; font-size:24px; font-weight:600; letter-spacing:.5px; line-height:1.2;
+    background:linear-gradient(105deg,var(--violet-400) 0%,var(--cyan-500) 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; }
+  .brand-sub { margin-top:2px; color:var(--sb-muted); font-size:12px; letter-spacing:1px; }
+  .nav { flex:1; padding:12px; display:flex; flex-direction:column; gap:4px; }
+  .nav-item { display:flex; align-items:center; gap:10px; height:44px; padding:0 14px; border-radius:8px;
+    color:rgb(255 255 255/85%); font-size:14px; cursor:pointer; position:relative; transition:background .12s,color .12s; }
+  .nav-item:hover { background:rgb(255 255 255/6%); color:#fff; }
+  .nav-item.active { background:rgb(99 91 235/20%); color:#fff; font-weight:500; }
+  .nav-item.active::before { content:""; position:absolute; left:0; top:50%; transform:translateY(-50%);
+    width:3px; height:60%; border-radius:0 4px 4px 0; background:var(--violet-400); }
+  .nav-ico { width:18px; height:18px; flex:none; opacity:.9; }
+  .sb-foot { padding:12px 16px; border-top:1px solid var(--sb-border); display:flex; justify-content:space-between; align-items:center; color:var(--sb-muted); font-size:12px; }
+
+  /* ---------- main ---------- */
+  .body { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .topbar { height:56px; flex:none; background:var(--surface); border-bottom:1px solid var(--border);
+    box-shadow:var(--shadow-sm); display:flex; align-items:center; padding:0 24px; }
+  .topbar h1 { margin:0; font-size:20px; font-weight:600; }
+  .main { padding:24px; display:flex; flex-direction:column; gap:28px; max-width:1180px; }
+
+  .intro { margin:0; padding:14px 16px; background:var(--violet-50); border:1px solid var(--violet-200);
+    border-radius:var(--radius-lg); color:var(--text-regular); font-size:13px; line-height:1.6; }
+  .intro b { color:var(--primary-text); }
+
+  /* section eyebrow */
+  .screen { display:flex; flex-direction:column; gap:12px; }
+  .eyebrow { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .eyebrow .n { font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--primary); letter-spacing:.5px; }
+  .eyebrow .t { font-size:16px; font-weight:600; }
+  .eyebrow .note { font-size:12px; color:var(--text-secondary); }
+  .eyebrow .note b { color:var(--text-regular); }
+
+  /* panel = a faux app surface */
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); }
+  .panel-pad { padding:16px; }
+
+  /* toolbar */
+  .toolbar { display:flex; gap:8px; align-items:center; }
+  .toolbar .spacer { flex:1; }
+  .toolbar .hint { font-size:12px; color:var(--text-secondary); }
+
+  /* buttons */
+  .btn { font-family:inherit; font-size:13px; font-weight:500; height:32px; padding:0 14px; border-radius:var(--radius-md);
+    border:1px solid var(--border); background:var(--surface); color:var(--text-regular); cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; transition:background .12s,border-color .12s,box-shadow .12s; }
+  .btn:hover { border-color:var(--gray-300); color:var(--text-primary); }
+  .btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .btn.primary:hover { background:var(--violet-600); border-color:var(--violet-600); box-shadow:0 2px 8px rgb(91 91 214/30%); }
+  .btn:focus-visible { outline:none; box-shadow:0 0 0 3px rgb(91 91 214/35%); }
+  .btn.sm { height:28px; padding:0 10px; font-size:12px; }
+  .link { background:none; border:none; padding:0; font:inherit; font-size:13px; font-weight:500; color:var(--primary-text); cursor:pointer; }
+  .link:hover { color:var(--violet-700); text-decoration:underline; }
+  .link.danger { color:var(--danger-text); }
+  .link.muted { color:var(--text-placeholder,#94a3b8); cursor:not-allowed; }
+  .link.muted:hover { text-decoration:none; }
+  .actions { display:flex; gap:14px; align-items:center; }
+
+  /* table */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; min-width:760px; }
+  thead th { text-align:left; font-weight:500; color:var(--text-secondary); background:var(--gray-50);
+    padding:10px 14px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  tbody td { padding:11px 14px; border-bottom:1px solid var(--border-light); color:var(--text-regular); vertical-align:middle; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover td { background:var(--gray-50); }
+  td .name { color:var(--text-primary); font-weight:500; }
+  .mono { font-family:var(--font-mono); font-size:12px; color:var(--text-regular); }
+  .muted { color:var(--text-secondary); font-size:12px; }
+  .num { font-variant-numeric:tabular-nums; }
+
+  /* tag pills */
+  .tag { display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 8px; border-radius:var(--radius-xs);
+    font-size:12px; font-weight:500; border:1px solid transparent; line-height:1; }
+  .tag .dot { width:6px; height:6px; border-radius:50%; }
+  .tag.success { background:var(--success-bg); color:var(--success-text); border-color:var(--success-border); }
+  .tag.success .dot { background:var(--success-text); }
+  .tag.danger { background:var(--danger-bg); color:var(--danger-text); border-color:var(--danger-border); }
+  .tag.danger .dot { background:var(--danger-text); }
+  .tag.neutral { background:var(--neutral-bg); color:var(--neutral-text); border-color:var(--neutral-border); }
+  .tag.neutral .dot { background:var(--neutral-text); }
+  .tag.info { background:var(--info-bg); color:var(--info-text); border-color:var(--info-border); }
+  .tag.plain { background:var(--surface); color:var(--text-regular); border-color:var(--border); }
+
+  /* switch */
+  .switch { width:40px; height:22px; border-radius:var(--radius-full); background:var(--gray-300); position:relative; display:inline-block; flex:none; transition:background .2s; vertical-align:middle; }
+  .switch::after { content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgb(15 23 42/20%); transition:transform .2s; }
+  .switch.on { background:var(--primary); }
+  .switch.on::after { transform:translateX(18px); }
+  .switch.off-disabled { opacity:.45; }
+
+  /* dialog */
+  .dialog { max-width:520px; border-radius:var(--radius-xl); box-shadow:var(--shadow-xl); border:1px solid var(--border); background:var(--surface); overflow:hidden; }
+  .dialog.wide { max-width:720px; }
+  .dialog-head { padding:18px 20px; border-bottom:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center; }
+  .dialog-head h3 { margin:0; font-size:16px; font-weight:600; }
+  .dialog-head .x { color:var(--text-secondary); cursor:pointer; font-size:18px; line-height:1; }
+  .dialog-body { padding:20px; }
+  .dialog-foot { padding:14px 20px; border-top:1px solid var(--border-light); display:flex; justify-content:flex-end; gap:8px; background:var(--gray-50); }
+
+  /* form */
+  .field { display:grid; grid-template-columns:96px 1fr; gap:14px; align-items:start; margin-bottom:16px; }
+  .field:last-child { margin-bottom:0; }
+  .field > label { font-size:13px; color:var(--text-regular); padding-top:8px; text-align:right; }
+  .field > label .req { color:var(--danger-text); margin-right:2px; }
+  .control input, .control select { width:100%; height:34px; padding:0 11px; font-family:inherit; font-size:13px;
+    border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); color:var(--text-primary); }
+  .control input:focus, .control select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgb(91 91 214/15%); }
+  .control input[readonly] { background:var(--gray-100); color:var(--text-secondary); cursor:not-allowed; }
+  .control .help { margin-top:6px; font-size:12px; color:var(--text-secondary); line-height:1.5; }
+  .control .help.locked { color:var(--info-text); }
+  .seg { display:flex; gap:0; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; width:fit-content; }
+  .seg span { padding:7px 14px; font-size:13px; color:var(--text-regular); cursor:pointer; border-right:1px solid var(--border); }
+  .seg span:last-child { border-right:none; }
+  .seg span.active { background:var(--violet-50); color:var(--primary-text); font-weight:500; }
+
+  /* chat */
+  .chat { display:flex; flex-direction:column; gap:14px; padding:20px; max-width:640px; }
+  .bubble { padding:12px 16px; border-radius:var(--radius-lg); font-size:14px; line-height:1.7; max-width:85%; }
+  .bubble.user { align-self:flex-end; background:var(--primary); color:#fff; border-bottom-right-radius:var(--radius-xs); }
+  .bubble.bot { align-self:flex-start; background:var(--gray-100); color:var(--text-primary); border-bottom-left-radius:var(--radius-xs); }
+  .toolrun { display:flex; flex-direction:column; gap:8px; margin:2px 0 10px; }
+  .toolcall { display:flex; align-items:center; gap:9px; font-size:13px; padding:8px 12px; border-radius:var(--radius-md);
+    background:var(--surface); border:1px solid var(--border); width:fit-content; color:var(--text-regular); }
+  .toolcall .ico { width:16px; height:16px; flex:none; }
+  .toolcall .nm { font-family:var(--font-mono); font-size:12px; color:var(--text-primary); }
+  .toolcall .st { margin-left:4px; font-size:12px; }
+  .toolcall.ok .st { color:var(--success-text); }
+  .toolcall.run .st { color:var(--primary-text); }
+  .toolcall.err { border-color:var(--danger-border); background:var(--danger-bg); }
+  .toolcall.err .st { color:var(--danger-text); }
+  .spin { width:13px; height:13px; border:2px solid var(--violet-200); border-top-color:var(--primary); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .legend { display:flex; flex-wrap:wrap; gap:18px; font-size:12px; color:var(--text-secondary); padding:0 2px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+
+  @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<div class="console">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-name">Hify</div>
+      <div class="brand-sub">AI AGENT PLATFORM</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1l-.4-2.5H9.6L9.2 5a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4.8l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6c.06-.3.1-.66.1-1Z"/></svg><span>模型管理</span></div>
+      <div class="nav-item"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Agent 管理</span></div>
+      <div class="nav-item"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 4v16"/></svg><span>知识库</span></div>
+      <div class="nav-item"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>对话</span></div>
+      <div class="nav-item active"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12a4 4 0 0 0 4 4h1a4 4 0 0 0 0-8h-1"/><path d="M15 12a4 4 0 0 0-4-4h-1a4 4 0 0 0 0 8h1"/></svg><span>MCP 工具</span></div>
+    </nav>
+    <div class="sb-foot"><span>收起</span><span>v0.1</span></div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="body">
+    <header class="topbar"><h1>MCP 工具</h1></header>
+    <main class="main">
+
+      <p class="intro">
+        MCP 前端原型（<b>features/mcp</b> 切片）。下面是四个界面与各自的关键设计点。后端已就绪：Server CRUD / 测试连接 / 同步工具 / 工具启停，以及对话中的工具循环。沿用现有控制台设计令牌（蓝紫主色、Element Plus 表格风格）。这是<b>静态原型</b>，按钮不可点。
+      </p>
+
+      <!-- ① Server 列表 -->
+      <section class="screen">
+        <div class="eyebrow">
+          <span class="n">01</span><span class="t">MCP Server 列表</span>
+          <span class="note">主界面，仿 provider 列表。<b>状态</b>列由「测试连接」刷新；<b>工具数</b>由「同步工具」刷新。</span>
+        </div>
+        <div class="panel">
+          <div class="panel-pad toolbar">
+            <button class="btn primary">+ 新增 Server</button>
+            <button class="btn">刷新</button>
+            <span class="spacer"></span>
+            <span class="hint">共 4 个 · 一期仅支持 Streamable HTTP 传输</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>名称</th><th>端点</th><th>鉴权</th><th>状态</th><th>工具数</th><th>启用</th><th style="width:300px">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="name">订单系统 MCP</span></td>
+                  <td><span class="mono">https://mcp.internal/orders</span></td>
+                  <td><span class="tag plain">Bearer</span></td>
+                  <td><span class="tag success"><span class="dot"></span>已连接</span></td>
+                  <td class="num">4</td>
+                  <td><span class="switch on"></span></td>
+                  <td><div class="actions">
+                    <button class="link">测试连接</button><button class="link">同步工具</button>
+                    <button class="link">工具</button><button class="link">编辑</button><button class="link danger">删除</button>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td><span class="name">知识检索 MCP</span></td>
+                  <td><span class="mono">https://mcp.internal/kb</span></td>
+                  <td><span class="tag plain">无</span></td>
+                  <td><span class="tag success"><span class="dot"></span>已连接</span></td>
+                  <td class="num">2</td>
+                  <td><span class="switch on"></span></td>
+                  <td><div class="actions">
+                    <button class="link">测试连接</button><button class="link">同步工具</button>
+                    <button class="link">工具</button><button class="link">编辑</button><button class="link danger">删除</button>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td><span class="name">支付网关 MCP</span></td>
+                  <td><span class="mono">https://mcp.internal/pay</span></td>
+                  <td><span class="tag plain">Header · x-api-key</span></td>
+                  <td><span class="tag danger" title="连接超时（10s）">  <span class="dot"></span>连接异常</span></td>
+                  <td class="num muted">0</td>
+                  <td><span class="switch off-disabled"></span></td>
+                  <td><div class="actions">
+                    <button class="link">测试连接</button><button class="link">同步工具</button>
+                    <button class="link">工具</button><button class="link">编辑</button><button class="link danger">删除</button>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td><span class="name">客服工单 MCP</span></td>
+                  <td><span class="mono">https://mcp.internal/tickets</span></td>
+                  <td><span class="tag plain">Bearer</span></td>
+                  <td><span class="tag neutral"><span class="dot"></span>未探测</span></td>
+                  <td class="num muted">—</td>
+                  <td><span class="switch on"></span></td>
+                  <td><div class="actions">
+                    <button class="link">测试连接</button><button class="link">同步工具</button>
+                    <button class="link">工具</button><button class="link">编辑</button><button class="link danger">删除</button>
+                  </div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="legend">
+          <span><span class="tag success"><span class="dot"></span>已连接</span> 握手成功</span>
+          <span><span class="tag danger"><span class="dot"></span>连接异常</span> 悬停看原因 / last_error</span>
+          <span><span class="tag neutral"><span class="dot"></span>未探测</span> 新建后未测过</span>
+        </div>
+      </section>
+
+      <!-- ② 新增/编辑 -->
+      <section class="screen">
+        <div class="eyebrow">
+          <span class="n">02</span><span class="t">新增 / 编辑 Server 对话框</span>
+          <span class="note">传输<b>固定 Streamable HTTP</b>（只读）；鉴权沿用 provider 三件套；密钥编辑时留空＝保留原值。</span>
+        </div>
+        <div class="dialog">
+          <div class="dialog-head"><h3>新增 MCP Server</h3><span class="x">✕</span></div>
+          <div class="dialog-body">
+            <div class="field">
+              <label><span class="req">*</span>名称</label>
+              <div class="control"><input value="订单系统 MCP" /></div>
+            </div>
+            <div class="field">
+              <label><span class="req">*</span>端点 URL</label>
+              <div class="control">
+                <input value="https://mcp.internal/orders" />
+                <div class="help">MCP Server 的 Streamable HTTP 端点，须为 http/https 绝对地址。</div>
+              </div>
+            </div>
+            <div class="field">
+              <label>传输</label>
+              <div class="control">
+                <input value="Streamable HTTP" readonly />
+                <div class="help locked">一期仅支持 Streamable HTTP，固定不可改。</div>
+              </div>
+            </div>
+            <div class="field">
+              <label>鉴权方式</label>
+              <div class="control"><div class="seg"><span>无</span><span class="active">Bearer</span><span>自定义头</span></div></div>
+            </div>
+            <div class="field">
+              <label>密钥</label>
+              <div class="control">
+                <input type="password" value="sk-xxxxxxxxxxxx" />
+                <div class="help">已保存：<span class="mono">…a1b2</span>　·　编辑时留空则保留原密钥。</div>
+              </div>
+            </div>
+            <div class="field">
+              <label>超时 (ms)</label>
+              <div class="control">
+                <input value="0" />
+                <div class="help">0 = 用全局默认（60s）；按 Server 覆盖时填 &gt; 0。</div>
+              </div>
+            </div>
+          </div>
+          <div class="dialog-foot"><button class="btn">取消</button><button class="btn primary">保存</button></div>
+        </div>
+      </section>
+
+      <!-- ③ 工具管理 -->
+      <section class="screen">
+        <div class="eyebrow">
+          <span class="n">03</span><span class="t">工具管理（订单系统 MCP）</span>
+          <span class="note">关键点：<b>「可用」≠「启用」</b>。可用＝服务端是否仍提供（同步发现）；启用＝管理员开关。工具被移除只灰显，<b>id 不变</b>不影响 Agent 绑定。</span>
+        </div>
+        <div class="dialog wide">
+          <div class="dialog-head">
+            <h3>工具 · 订单系统 MCP</h3>
+            <span class="x">✕</span>
+          </div>
+          <div class="dialog-body" style="padding:0">
+            <div class="panel-pad toolbar" style="border-bottom:1px solid var(--border-light)">
+              <button class="btn sm primary">同步工具</button>
+              <span class="spacer"></span>
+              <span class="hint">最近同步：2026-06-30 14:22 · 发现 4 个</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>工具名</th><th>描述</th><th>可用</th><th>启用</th><th style="width:90px">入参</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><span class="mono">search_order</span></td>
+                    <td>按订单号 / 手机号查询订单</td>
+                    <td><span class="tag success"><span class="dot"></span>可用</span></td>
+                    <td><span class="switch on"></span></td>
+                    <td><button class="link">Schema</button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="mono">get_logistics</span></td>
+                    <td>查询订单物流轨迹</td>
+                    <td><span class="tag success"><span class="dot"></span>可用</span></td>
+                    <td><span class="switch on"></span></td>
+                    <td><button class="link">Schema</button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="mono">create_refund</span></td>
+                    <td>创建退款单</td>
+                    <td><span class="tag success"><span class="dot"></span>可用</span></td>
+                    <td><span class="switch off-disabled" title="管理员已停用"></span></td>
+                    <td><button class="link">Schema</button></td>
+                  </tr>
+                  <tr style="opacity:.62">
+                    <td><span class="mono">cancel_order</span></td>
+                    <td>取消订单</td>
+                    <td><span class="tag neutral"><span class="dot"></span>已移除</span></td>
+                    <td><span class="switch on off-disabled"></span></td>
+                    <td><button class="link muted">Schema</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="dialog-foot"><button class="btn">关闭</button></div>
+        </div>
+        <div class="legend">
+          <span><span class="tag success"><span class="dot"></span>可用</span> 服务端仍提供</span>
+          <span><span class="tag neutral"><span class="dot"></span>已移除</span> 同步发现服务端已撤下，灰显但保留绑定</span>
+          <span><span class="switch on" style="width:32px;height:18px"></span> 管理员启停（仅可用工具生效）</span>
+        </div>
+      </section>
+
+      <!-- ④ 对话中调用工具 -->
+      <section class="screen">
+        <div class="eyebrow">
+          <span class="n">04</span><span class="t">对话中调用工具</span>
+          <span class="note">复用 SSE：工具轮以 <b>tool_call / tool_result</b> 事件展示「正在调用 / 完成」，最终答仍逐字流式。</span>
+        </div>
+        <div class="panel">
+          <div class="chat">
+            <div class="bubble user">帮我查下订单 20250630 的物流到哪了？</div>
+            <div class="toolrun">
+              <div class="toolcall ok">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 1 0 5.6l-2 2a4 4 0 0 1-5.6-5.6l1-1"/><path d="M9.3 17.7a4 4 0 0 1 0-5.6l2-2a4 4 0 0 1 5.6 5.6l-1 1"/></svg>
+                <span class="nm">search_order</span><span class="st">✓ 已完成</span>
+              </div>
+              <div class="toolcall ok">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 1 0 5.6l-2 2a4 4 0 0 1-5.6-5.6l1-1"/><path d="M9.3 17.7a4 4 0 0 1 0-5.6l2-2a4 4 0 0 1 5.6 5.6l-1 1"/></svg>
+                <span class="nm">get_logistics</span><span class="st">✓ 已完成</span>
+              </div>
+              <div class="toolcall run">
+                <span class="spin"></span>
+                <span class="nm">正在生成回复…</span><span class="st"></span>
+              </div>
+            </div>
+            <div class="bubble bot">您的订单 <b>20250630</b> 已于今早发货，当前在「杭州转运中心」，预计明天送达。需要我帮您催一下吗？</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><span class="toolcall ok" style="height:auto;padding:3px 8px"><span class="nm">name</span><span class="st">✓</span></span> 工具成功</span>
+          <span><span class="toolcall err" style="height:auto;padding:3px 8px"><span class="nm">name</span><span class="st">✕ 失败</span></span> 工具报错（结果回喂模型，循环不中断）</span>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>

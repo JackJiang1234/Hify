@@ -20,12 +20,14 @@ internal sealed class FakeModelProviderQuery : IModelProviderQuery
         long id,
         bool enabled = true,
         long contextWindow = 8192,
-        long maxOutputTokens = 1024) => new()
+        long maxOutputTokens = 1024,
+        bool supportsTools = false) => new()
     {
         Id = id,
         ModelType = ModelTypes.Chat,
         Enabled = enabled,
         SupportsStreaming = true,
+        SupportsTools = supportsTools,
         ContextWindow = contextWindow,
         MaxOutputTokens = maxOutputTokens,
     };

@@ -22,7 +22,9 @@ internal sealed class FakeAgentQuery : IAgentQuery
         long modelId,
         string systemPrompt = "you are helpful",
         bool enabled = true,
-        IReadOnlyList<long>? knowledgeBaseIds = null) => new()
+        IReadOnlyList<long>? knowledgeBaseIds = null,
+        IReadOnlyList<long>? toolIds = null,
+        int maxIterations = 5) => new()
     {
         Id = id,
         Name = $"agent-{id}",
@@ -30,8 +32,8 @@ internal sealed class FakeAgentQuery : IAgentQuery
         SystemPrompt = systemPrompt,
         ModelParams = new ModelParams(),
         RetrievalParams = new RetrievalParams { TopK = 3 },
-        MaxIterations = 5,
-        ToolIds = [],
+        MaxIterations = maxIterations,
+        ToolIds = toolIds ?? [],
         KnowledgeBaseIds = knowledgeBaseIds ?? [],
         Enabled = enabled,
     };

@@ -11,6 +11,12 @@ internal enum ChatEventType
 
     /// <summary>流中途失败（头已发出，无法再用 Result）。</summary>
     Error,
+
+    /// <summary>工具调用开始（工具循环中，供前端展示「正在调用工具 X」）。</summary>
+    ToolCall,
+
+    /// <summary>工具调用结果（成功/失败）。</summary>
+    ToolResult,
 }
 
 /// <summary>
@@ -43,6 +49,15 @@ internal sealed record ChatEvent
     /// <summary>错误信息（仅 <see cref="ChatEventType.Error"/>，不含敏感数据）。</summary>
     public string ErrorMessage { get; init; } = string.Empty;
 
+    /// <summary>工具调用关联 Id（仅 <see cref="ChatEventType.ToolCall"/> / <see cref="ChatEventType.ToolResult"/>）。</summary>
+    public string ToolCallId { get; init; } = string.Empty;
+
+    /// <summary>工具名（仅 <see cref="ChatEventType.ToolCall"/> / <see cref="ChatEventType.ToolResult"/>）。</summary>
+    public string ToolName { get; init; } = string.Empty;
+
+    /// <summary>工具是否报错（仅 <see cref="ChatEventType.ToolResult"/>）。</summary>
+    public bool ToolIsError { get; init; }
+
     public static ChatEvent Delta(string text) => new() { Type = ChatEventType.Delta, Text = text };
 
     public static ChatEvent Done(long messageId, string finishReason, long promptTokens, long completionTokens) => new()
@@ -59,5 +74,20 @@ internal sealed record ChatEvent
         Type = ChatEventType.Error,
         ErrorCode = code,
         ErrorMessage = message,
+    };
+
+    public static ChatEvent ToolCallStarted(string callId, string toolName) => new()
+    {
+        Type = ChatEventType.ToolCall,
+        ToolCallId = callId,
+        ToolName = toolName,
+    };
+
+    public static ChatEvent ToolCallResult(string callId, string toolName, bool isError) => new()
+    {
+        Type = ChatEventType.ToolResult,
+        ToolCallId = callId,
+        ToolName = toolName,
+        ToolIsError = isError,
     };
 }

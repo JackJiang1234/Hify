@@ -108,6 +108,7 @@ internal sealed class OpenAiCompatibleAdapter : IModelProviderAdapter
             {
                 Content = choice.Message?.Content ?? string.Empty,
                 FinishReason = choice.FinishReason ?? string.Empty,
+                ToolCalls = MapToolCalls(choice.Message?.ToolCalls),
                 PromptTokens = parsed.Usage?.PromptTokens ?? 0,
                 CompletionTokens = parsed.Usage?.CompletionTokens ?? 0,
             });
@@ -304,12 +305,68 @@ internal sealed class OpenAiCompatibleAdapter : IModelProviderAdapter
     private static OpenAiChatRequest BuildChatPayload(string model, ChatRequest request, bool stream) =>
         new(
             model,
-            request.Messages.Select(message => new OpenAiMessage(message.Role, message.Content)).ToList(),
+            request.Messages.Select(ToOpenAiMessage).ToList(),
             request.MaxTokens,
             request.Temperature,
             request.TopP,
             stream,
-            stream ? new OpenAiStreamOptions(true) : null);
+            stream ? new OpenAiStreamOptions(true) : null,
+            BuildTools(request.Tools));
+
+    private static OpenAiMessage ToOpenAiMessage(ChatMessage message)
+    {
+        if (message.ToolCalls.Count > 0)
+        {
+            var toolCalls = message.ToolCalls
+                .Select(call => new OpenAiToolCall(call.Id, "function", new OpenAiFunctionCall(call.Name, call.ArgumentsJson)))
+                .ToList();
+            // assistant 发起工具调用：content 可空（null 触发 WhenWritingNull 省略）。
+            return new OpenAiMessage(message.Role, string.IsNullOrEmpty(message.Content) ? null : message.Content, toolCalls);
+        }
+
+        if (!string.IsNullOrEmpty(message.ToolCallId))
+        {
+            return new OpenAiMessage(message.Role, message.Content, ToolCallId: message.ToolCallId);
+        }
+
+        return new OpenAiMessage(message.Role, message.Content);
+    }
+
+    private static IReadOnlyList<OpenAiTool>? BuildTools(IReadOnlyList<ToolDefinition> tools)
+    {
+        if (tools.Count == 0)
+        {
+            return null;
+        }
+
+        return tools
+            .Select(tool => new OpenAiTool("function", new OpenAiFunction(tool.Name, tool.Description, ParseJsonObject(tool.ParametersJson))))
+            .ToList();
+    }
+
+    private static JsonElement ParseJsonObject(string json)
+    {
+        var text = string.IsNullOrWhiteSpace(json) ? "{}" : json;
+        using var document = JsonDocument.Parse(text);
+        return document.RootElement.Clone(); // Clone 脱离 document 生命周期，序列化时仍可用
+    }
+
+    private static IReadOnlyList<ToolCall> MapToolCalls(IReadOnlyList<OpenAiResponseToolCall>? toolCalls)
+    {
+        if (toolCalls is null || toolCalls.Count == 0)
+        {
+            return [];
+        }
+
+        return toolCalls
+            .Select(call => new ToolCall
+            {
+                Id = call.Id ?? string.Empty,
+                Name = call.Function?.Name ?? string.Empty,
+                ArgumentsJson = string.IsNullOrEmpty(call.Function?.Arguments) ? "{}" : call.Function!.Arguments!,
+            })
+            .ToList();
+    }
 
     private sealed record OpenAiChatRequest(
         [property: JsonPropertyName("model")] string Model,
@@ -319,13 +376,34 @@ internal sealed class OpenAiCompatibleAdapter : IModelProviderAdapter
         [property: JsonPropertyName("temperature")] double? Temperature,
         [property: JsonPropertyName("top_p")] double? TopP,
         [property: JsonPropertyName("stream")] bool Stream,
-        [property: JsonPropertyName("stream_options")] OpenAiStreamOptions? StreamOptions);
+        [property: JsonPropertyName("stream_options")] OpenAiStreamOptions? StreamOptions,
+        [property: JsonPropertyName("tools")] IReadOnlyList<OpenAiTool>? Tools);
 
     private sealed record OpenAiStreamOptions([property: JsonPropertyName("include_usage")] bool IncludeUsage);
 
     private sealed record OpenAiMessage(
         [property: JsonPropertyName("role")] string Role,
-        [property: JsonPropertyName("content")] string Content);
+        [property: JsonPropertyName("content")] string? Content,
+        [property: JsonPropertyName("tool_calls")] IReadOnlyList<OpenAiToolCall>? ToolCalls = null,
+        [property: JsonPropertyName("tool_call_id")] string? ToolCallId = null);
+
+    private sealed record OpenAiTool(
+        [property: JsonPropertyName("type")] string Type,
+        [property: JsonPropertyName("function")] OpenAiFunction Function);
+
+    private sealed record OpenAiFunction(
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("description")] string Description,
+        [property: JsonPropertyName("parameters")] JsonElement Parameters);
+
+    private sealed record OpenAiToolCall(
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("type")] string Type,
+        [property: JsonPropertyName("function")] OpenAiFunctionCall Function);
+
+    private sealed record OpenAiFunctionCall(
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("arguments")] string Arguments);
 
     private sealed record OpenAiEmbeddingRequest(
         [property: JsonPropertyName("model")] string Model,
@@ -357,6 +435,22 @@ internal sealed class OpenAiCompatibleAdapter : IModelProviderAdapter
     private sealed record OpenAiMessageContent
     {
         [JsonPropertyName("content")] public string? Content { get; init; }
+
+        [JsonPropertyName("tool_calls")] public IReadOnlyList<OpenAiResponseToolCall>? ToolCalls { get; init; }
+    }
+
+    private sealed record OpenAiResponseToolCall
+    {
+        [JsonPropertyName("id")] public string? Id { get; init; }
+
+        [JsonPropertyName("function")] public OpenAiResponseFunction? Function { get; init; }
+    }
+
+    private sealed record OpenAiResponseFunction
+    {
+        [JsonPropertyName("name")] public string? Name { get; init; }
+
+        [JsonPropertyName("arguments")] public string? Arguments { get; init; }
     }
 
     private sealed record OpenAiUsage
