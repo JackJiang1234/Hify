@@ -6,6 +6,7 @@ import { ElMessage } from 'element-plus'
 import { agentApi, type AgentDto, type AgentUpsert } from '@/api/agent'
 import { knowledgeApi } from '@/api/knowledge'
 import type { ChatModelOption } from '../composables/useChatModels'
+import { useMcpTools } from '../composables/useMcpTools'
 import { MAX_BINDINGS, MAX_SYSTEM_PROMPT, PARAM_RANGE, defaultAgentForm } from '../constants'
 
 const visible = defineModel<boolean>('visible', { required: true })
@@ -17,8 +18,9 @@ const submitting = ref(false)
 const formRef = ref<FormInstance>()
 
 const form = reactive<AgentUpsert>(defaultAgentForm())
-// 工具暂以标签输入 ID（MCP 列表接口上线后可同样替换为选择器）
-const toolIdsInput = ref<string[]>([])
+
+// 工具：从 MCP 接口拉取真实选项，按 Server 分组选择（form.toolIds 直接持有所选工具 Id）
+const { groups: toolGroups, loading: toolsLoading, load: loadTools } = useMcpTools()
 
 // 知识库改为从接口拉取的真实选项（替换原手动输入 ID 的占位）
 const knowledgeBases = ref<{ id: number; name: string }[]>([])
@@ -54,9 +56,7 @@ const maxTokensCap = computed(() => selectedModel.value?.maxOutputTokens || unde
 // 选了不支持工具的模型却绑了工具：前端先行提示，最终以后端校验为准
 const toolUnsupported = computed(
   () =>
-    selectedModel.value !== null &&
-    !selectedModel.value.supportsTools &&
-    toolIdsInput.value.length > 0,
+    selectedModel.value !== null && !selectedModel.value.supportsTools && form.toolIds.length > 0,
 )
 
 const rules: FormRules<AgentUpsert> = {
@@ -70,25 +70,13 @@ const rules: FormRules<AgentUpsert> = {
   ],
 }
 
-// 解析标签为正整数数组；含非法项返回 null
-function parseIdList(input: string[]): number[] | null {
-  const ids: number[] = []
-  for (const raw of input) {
-    const value = Number(raw)
-    if (!Number.isInteger(value) || value <= 0) {
-      return null
-    }
-    ids.push(value)
-  }
-  return ids
-}
-
 watch(visible, (open) => {
   if (!open) {
     return
   }
   formRef.value?.clearValidate()
   void loadKnowledgeBases()
+  void loadTools()
   const initial = props.agent
   if (initial) {
     Object.assign(form, {
@@ -107,10 +95,8 @@ watch(visible, (open) => {
       knowledgeBaseIds: [...initial.knowledgeBaseIds],
       enabled: initial.enabled,
     })
-    toolIdsInput.value = initial.toolIds.map(String)
   } else {
     Object.assign(form, defaultAgentForm())
-    toolIdsInput.value = []
   }
 })
 
@@ -120,16 +106,10 @@ async function submit(): Promise<void> {
     return
   }
 
-  const toolIds = parseIdList(toolIdsInput.value)
-  if (toolIds === null) {
-    ElMessage.error('工具 ID 必须为正整数')
-    return
-  }
-
   submitting.value = true
   try {
-    // knowledgeBaseIds 已是选择器给出的 number[]，随 form 一并提交
-    const body: AgentUpsert = { ...form, toolIds }
+    // toolIds / knowledgeBaseIds 均为选择器给出的 number[]，随 form 一并提交
+    const body: AgentUpsert = { ...form }
     if (props.agent) {
       await agentApi.update(props.agent.id, body)
       ElMessage.success('已更新')
@@ -253,16 +233,30 @@ async function submit(): Promise<void> {
 
       <el-form-item label="工具" class="bindings">
         <el-select
-          v-model="toolIdsInput"
+          v-model="form.toolIds"
           multiple
           filterable
-          allow-create
-          default-first-option
-          :reserve-keyword="false"
           :multiple-limit="MAX_BINDINGS"
-          placeholder="输入 MCP 工具 ID 回车添加"
+          :loading="toolsLoading"
+          placeholder="选择 MCP 工具"
           style="width: 100%"
-        />
+        >
+          <el-option-group
+            v-for="group in toolGroups"
+            :key="group.serverName"
+            :label="group.serverName"
+          >
+            <el-option
+              v-for="tool in group.items"
+              :key="tool.id"
+              :label="tool.enabled ? tool.name : `${tool.name}（已停用）`"
+              :value="tool.id"
+            />
+          </el-option-group>
+        </el-select>
+        <span v-if="!toolsLoading && toolGroups.length === 0" class="hint"
+          >暂无可用工具，请先在「MCP 工具」中添加 Server 并同步工具</span
+        >
         <span v-if="toolUnsupported" class="hint hint--warn"
           >所选模型不支持工具调用，保存会被拒绝</span
         >
