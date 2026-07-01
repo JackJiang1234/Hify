@@ -3,6 +3,56 @@
 简版 AI Agent 开发平台（参考 Dify），可本地部署，面向团队内部小规模使用。
 详细产品定位、架构决策与编码规范见 [CLAUDE.md](./CLAUDE.md)。
 
+## 系统功能与界面
+
+Hify 采用左侧导航 + 内容区的控制台布局，围绕「配模型 → 建 Agent → 接工具/知识 → 对话/编排」串起完整链路，共六个模块。
+
+### 模型管理
+
+统一管理多家模型提供商（OpenAI / OpenAI 兼容、Claude、Ollama），支持新增供应商、编辑 API 基址与密钥、一键**测试连接**并展示实时健康状态与响应耗时、启用 / 停用。每个供应商下再单独维护模型清单：区分对话（chat）与嵌入（embedding）能力，标注流式 / 工具调用支持，可设默认模型；嵌入模型固定 1536 维以对齐向量库。
+
+![模型管理 - 供应商列表](doc/images/modeprovider/mode_provider_list.png)
+
+![模型管理 - 模型清单](doc/images/modeprovider/mode_provider_modelist.png)
+
+### Agent 管理
+
+创建与配置 Agent：填名称、描述，选对话模型，写系统提示词（角色 / 任务 / 约束，上限 8000 字），并可折叠配置生成参数与检索参数。通过下拉绑定 **MCP 工具**与**知识库**，设置迭代上限（工具调用轮次），列表一览各 Agent 的工具数、知识库数与启用状态。
+
+![Agent 管理 - 列表](doc/images/agent/agent_list.png)
+
+![Agent 管理 - 新增 Agent](doc/images/agent/agent_add.png)
+
+### 对话
+
+面向已配置 Agent 的多轮流式对话界面。左侧管理历史会话（新建 / 切换，按 Agent 标注），右侧流式输出回复，展示 token 用量（输入 ↑ / 输出 ↓）与完成状态；Agent 会自动检索绑定的知识库并调用 MCP 工具作答。
+
+![对话](doc/images/conversation/conversation.png)
+
+### 知识库（RAG）
+
+一期支持 TXT 文档、固定长度分块。新建知识库时选嵌入模型（仅列 1536 维模型）、设分块长度（100–4000 字符）与重叠长度；列表展示文档数、分块 / 重叠配置与创建时间，支持上传文档、相似度检索、编辑与删除。
+
+![知识库 - 列表](doc/images/rag/rag_list.png)
+
+![知识库 - 新建知识库](doc/images/rag/rag_add.png)
+
+### MCP 工具
+
+接入外部 MCP Server，供 Agent 通过 MCP 协议调用外部工具。一期仅支持 Streamable HTTP 传输：配置端点 URL、鉴权方式与超时，**测试连接**、**同步工具**拉取工具清单并查看，列表展示连接状态与工具数量。
+
+![MCP 工具 - 列表](doc/images/mcp/mcp_list.png)
+
+![MCP 工具 - 新增 Server](doc/images/mcp/mcp_server.png)
+
+### 工作流
+
+简版工作流，支持线性 + 单层条件分支的拖拽编排。可视化画布提供开始、大模型、结束等节点；支持保存草稿、发布，并在运行结果面板查看最终输出、逐节点执行轨迹与各步耗时。
+
+![工作流 - 列表](doc/images/workflow/workflow_list.png)
+
+![工作流 - 运行结果](doc/images/workflow/workflow_run.png)
+
 ## 技术栈
 
 - 后端：.NET 10 + ASP.NET Core 10 + EF Core 10 + PostgreSQL 18（pgvector）+ Redis 7
